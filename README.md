@@ -1,2 +1,2 @@
 # AuDHD-LifeCoach
-Learning about Agents and how they might be able to help me
+I was messaging with a friend the other day around 11:45 and I told them I would come over to their home at 15:30 and give them and their kid a ride to an event. They NEEDED to leave their house at between 15:30 and 16:00. My ADHD brain, however decided in that moment between sending that message and scheduleing my day from that point forward, I changed the info in my head from arriving at their house at 15:30 to leaving my house at 15:30 and thus was very very late. I felt terrible, and while I strive to understand my neurotype and how it is no worse or better than any other neurotype, this kind of Executive Function failure tweaks my internalized ableism badly
