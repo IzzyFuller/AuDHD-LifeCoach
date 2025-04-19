@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 from audhd_lifecoach.core.domain.entities.commitment import Commitment
+from audhd_lifecoach.core.domain.config import DEFAULT_TRAVEL_TIME, DEFAULT_PREP_TIME
 
 
 class TestCommitment:
@@ -86,8 +87,8 @@ class TestCommitment:
         
         # Assert
         departure_time = commitment.calculate_departure_time()
-        # Should use default values (e.g., 15 mins travel, 5 mins prep)
-        expected_departure = when - commitment.DEFAULT_TRAVEL_TIME - commitment.DEFAULT_PREP_TIME
+        # Should use default values from config
+        expected_departure = when - DEFAULT_TRAVEL_TIME - DEFAULT_PREP_TIME
         assert departure_time == expected_departure
         
     def test_missing_required_arguments(self):

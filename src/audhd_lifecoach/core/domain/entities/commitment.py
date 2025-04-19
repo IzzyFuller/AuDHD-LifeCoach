@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Optional
 
+from audhd_lifecoach.core.domain.config import DEFAULT_TRAVEL_TIME, DEFAULT_PREP_TIME
+
 
 @dataclass
 class Commitment:
@@ -20,28 +22,20 @@ class Commitment:
     what: str
     where: str
     
-    # Optional attributes
-    estimated_travel_time: Optional[timedelta] = None
-    estimated_prep_time: Optional[timedelta] = None
-    
-    # Default values for travel and prep time if not specified
-    DEFAULT_TRAVEL_TIME = timedelta(minutes=15)
-    DEFAULT_PREP_TIME = timedelta(minutes=5)
+    # Optional attributes with default values from config
+    estimated_travel_time: timedelta = DEFAULT_TRAVEL_TIME
+    estimated_prep_time: timedelta = DEFAULT_PREP_TIME
     
     def calculate_departure_time(self) -> datetime:
         """
         Calculate when the user needs to leave to make this commitment.
         
         Takes into account the estimated travel time and preparation time.
-        If these are not specified, uses default values.
         
         Returns:
             datetime: The time the user should begin preparing for the commitment
         """
-        travel_time = self.estimated_travel_time or self.DEFAULT_TRAVEL_TIME
-        prep_time = self.estimated_prep_time or self.DEFAULT_PREP_TIME
-        
-        return self.when - travel_time - prep_time
+        return self.when - self.estimated_travel_time - self.estimated_prep_time
     
     def __str__(self) -> str:
         """
