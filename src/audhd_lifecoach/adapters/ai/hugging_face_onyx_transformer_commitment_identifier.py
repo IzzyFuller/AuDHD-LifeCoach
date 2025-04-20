@@ -4,18 +4,28 @@ Transformer-based implementation of the CommitmentIdentifiable interface using H
 This adapter uses Hugging Face's transformer models for local processing
 of natural language to identify commitments.
 """
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 import re
 from datetime import datetime
 import logging
 
 # Direct imports instead of conditional or lazy loading
 from transformers import pipeline
+import dateparser
 
 from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.domain.entities.commitment import Commitment
 
 logger = logging.getLogger(__name__)
+
+# Patterns to help identify potential time expressions for dateparser
+TIME_PATTERNS = [
+    r'\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?',          # 3:30 PM, 15:30
+    r'(?:at|by|on|for)\s+\d{1,2}:\d{2}',           # at 3:30, by 15:30
+    r'(?:at|by|on|for)\s+\d{1,2}\s*(?:AM|PM|am|pm)', # at 3 PM
+    r'(?:at|by|on|for)\s+(?:noon|midnight)',       # at noon, by midnight
+    r'(?:next|this|tomorrow|today)\s+\w+\s+(?:at|by)\s+\d{1,2}', # next Monday at 5
+]
 
 
 class HuggingFaceONYXTransformerCommitmentIdentifier:
@@ -54,6 +64,46 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
             return int(time_match.group(1)), int(time_match.group(2))
         return None
     
+    def _extract_time_entities(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract time entities from text using dateparser and pattern matching.
+        
+        Args:
+            text: The input text to extract time entities from
+            
+        Returns:
+            List of dictionaries containing time entity information
+        """
+        time_entities = []
+        
+        # Use regex patterns to find potential time expressions
+        potential_times = []
+        for pattern in TIME_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                potential_times.append((match.group(0), match.start(), match.end()))
+        
+        # Process each potential time expression
+        for time_expr, start, end in potential_times:
+            # Try to parse the time expression
+            parsed_date = dateparser.parse(time_expr, settings={
+                'PREFER_DATES_FROM': 'future',
+                'RELATIVE_BASE': datetime.now()
+            })
+            
+            if parsed_date:
+                time_entity = {
+                    'entity': 'TIME',
+                    'word': time_expr,
+                    'start': start,
+                    'end': end,
+                    'parsed_datetime': parsed_date,
+                    'score': 1.0  # Confidence score for rule-based extraction
+                }
+                time_entities.append(time_entity)
+        
+        return time_entities
+    
     def _has_commitment_intent(self, text: str) -> bool:
         """
         Determine if the text contains a commitment intent.
@@ -82,41 +132,39 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
             return []
         
         try:
-            # Extract named entities
-            entities = self.ner_pipeline(text)
+            # Extract standard named entities (locations, organizations, etc.)
+            standard_entities = self.ner_pipeline(text)
             
-            # Process entities to find times and locations
-            time_entity = None
+            # Extract time entities using dateparser
+            time_entities = self._extract_time_entities(text)
+            
+            # Find location entities from standard entities
             location_entity = None
-            
-            for entity in entities:
-                if entity['entity'] in ('TIME', 'B-TIME'):
-                    time_entity = entity
-                elif entity['entity'] in ('LOC', 'B-LOC', 'LOCATION'):
+            for entity in standard_entities:
+                if entity['entity'] in ('LOC', 'B-LOC', 'I-LOC', 'LOCATION'):
                     location_entity = entity
+                    break
             
             # If we found a time entity, create a commitment
-            if time_entity:
-                time_tuple = self._extract_time_from_entity(time_entity['word'])
+            if time_entities:
+                # Use the first time entity found
+                time_entity = time_entities[0]
+                parsed_datetime = time_entity['parsed_datetime']
                 
-                if time_tuple:
-                    hour, minute = time_tuple
-                    when = datetime.now().replace(hour=hour, minute=minute)
-                    
-                    # Extract location if available
-                    where = "location mentioned in message"
-                    if location_entity:
-                        where = location_entity['word']
-                    
-                    # Create commitment
-                    commitment = Commitment(
-                        when=when,
-                        who=communication.recipient,
-                        what="Meeting or appointment",
-                        where=where
-                    )
-                    
-                    return [commitment]
+                # Extract location if available
+                where = "location mentioned in message"
+                if location_entity:
+                    where = location_entity['word']
+                
+                # Create commitment
+                commitment = Commitment(
+                    when=parsed_datetime,
+                    who=communication.recipient,
+                    what="Meeting or appointment",
+                    where=where
+                )
+                
+                return [commitment]
             
             # No valid time entity found
             return []

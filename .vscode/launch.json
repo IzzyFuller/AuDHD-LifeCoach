@@ -13,9 +13,7 @@
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            }
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "Debug Current Test File",
@@ -29,9 +27,35 @@
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            }
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Integration Test - Communication to Reminder",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/Scripts/pytest",
+            "args": [
+                "${workspaceFolder}/tests/integration/test_communication_to_reminder_flow.py",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug All Integration Tests",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/Scripts/pytest",
+            "args": [
+                "${workspaceFolder}/tests/integration",
+                "-v",
+                "-m",
+                "integration"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
