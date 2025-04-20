@@ -15,6 +15,7 @@ from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.domain.entities.commitment import Commitment
 from audhd_lifecoach.core.domain.entities.reminder import Reminder
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+from audhd_lifecoach.application.services.communication_processor import CommunicationProcessor
 
 
 class TestCommunicationToReminderFlow:
@@ -37,44 +38,35 @@ class TestCommunicationToReminderFlow:
             recipient="Friend"
         )
         
-        # 2. Create the commitment identifier
+        # 2. Create the commitment identifier and processor
         identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+        processor = CommunicationProcessor(identifier)
         
         # Act
-        # 3. Process the communication to extract commitments
-        commitments = identifier.identify_commitments(communication)
-        
-        # 4. Create reminders from the commitments
-        reminders = []
-        for commitment in commitments:
-            reminder = Reminder.from_commitment(commitment)
-            reminders.append(reminder)
+        # 3. Process the communication to create reminders
+        reminders = processor.process_communication(communication)
         
         # Assert
-        # 5. Verify that commitments were identified
-        assert len(commitments) > 0, "No commitments were identified from the communication"
+        # 4. Verify that reminders were created
+        assert len(reminders) > 0, "No reminders were created from the communication"
         
-        # 6. Get the first commitment
-        commitment = commitments[0]
+        # 5. Get the first reminder and its associated commitment
+        reminder = reminders[0]
+        commitment = reminder.commitment
         
-        # 7. Verify commitment details
+        # 6. Verify commitment details
+        assert commitment is not None, "Reminder has no associated commitment"
         assert commitment.who == "Friend"
         assert commitment.what == "Meeting or appointment" or "call" in commitment.what.lower()
+        
         # Using 15:30 as the expected time from our message
         expected_hour = 15
         expected_minute = 30
         assert commitment.when.hour == expected_hour
         assert commitment.when.minute == expected_minute
         
-        # 8. Verify that reminders were created
-        assert len(reminders) > 0, "No reminders were created from the commitments"
-        
-        # 9. Get the first reminder
-        reminder = reminders[0]
-        
-        # 10. Verify reminder details
+        # 7. Verify reminder details
         assert not reminder.acknowledged
-        assert reminder.commitment == commitment
         # Reminder time should be before the commitment time
         assert reminder.when < commitment.when
         # Reminder should include relevant info
