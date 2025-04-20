@@ -1,0 +1,49 @@
+{
+  "project": {
+    "name": "AuDHD-LifeCoach",
+    "description": "A life coach application for AuDHD individuals"
+  },
+  "language_guidelines": {
+    "neurodiversity_language": {
+      "use_identity_first": true,
+      "examples": {
+        "preferred": ["Autistic person", "ADHD person", "AuDHD person"],
+        "avoid": ["person with autism", "person with ADHD", "person with AuDHD"]
+      },
+      "rationale": "Neurodivergence is an integral part of identity, not a disease or condition"
+    }
+  },
+  "development_standards": {
+    "methodology": "TDD",
+    "tdd_steps": [
+      "Write failing test",
+      "Implement minimal code to pass test",
+      "Refactor while maintaining passing tests"
+    ],
+    "architecture": "Clean Architecture",
+    "layers": {
+      "core_domain": {
+        "description": "Business entities and rules",
+        "dependencies": []
+      },
+      "use_cases": {
+        "description": "Application-specific business rules",
+        "dependencies": ["core_domain"]
+      },
+      "adapters": {
+        "description": "Interface between use cases and external systems",
+        "dependencies": ["core_domain", "use_cases"]
+      },
+      "frameworks": {
+        "description": "External frameworks and tools",
+        "dependencies": ["adapters"]
+      }
+    },
+    "coding_standards": {
+      "style_guide": "PEP 8",
+      "use_type_annotations": true,
+      "require_docstrings": true,
+      "function_design": "Single responsibility"
+    }
+  }
+}
