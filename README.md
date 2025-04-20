@@ -12,10 +12,8 @@ I would also like to include support for my various 'fun' autism tendencies such
 The AuDHD-LifeCoach application follows a clean architecture approach with clear separation of concerns. The diagram below shows the dependencies between components:
 
 ```mermaid
-%%{init: {"theme":"forest", "themeCSS": "g.classGroup rect { stroke-width: 2px; stroke-dasharray: 5; } .relations { stroke-width: 1.5px; stroke-dasharray: 5 5; } text { font-family: 'Comic Sans MS', cursive; font-size: 14px; } g.classGroup text { font-weight: normal; } .node rect { stroke-width: 2px; stroke-dasharray: 5; } .clusters rect { stroke-dasharray: 5; }", "flowchart": {"curve": "basis"}}}%%
-
 flowchart TD
-    %% Main components with XKCD style
+    %% Main components
     Communication["Communication 📱"]
     Commitment["Commitment 🤝"]
     Reminder["Reminder 🔔"]
@@ -25,7 +23,7 @@ flowchart TD
     TransformersLib["Transformers 🤖<br>Library"]
     DateparserLib["Dateparser 📅<br>Library"]
     
-    %% Dependencies using XKCD style lines
+    %% Dependencies
     Communication -->|analyzed by| HuggingFaceID
     HuggingFaceID -->|produces| Commitment
     Commitment -->|referenced by| Reminder
@@ -39,10 +37,10 @@ flowchart TD
     HuggingFaceID -.->|uses| DateparserLib
     
     %% Styling
-    classDef core fill:#f9f,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef adapter fill:#bbf,stroke:#333,stroke-width:2px,stroke-dasharray: 3 3;
-    classDef service fill:#bfb,stroke:#333,stroke-width:2px,stroke-dasharray: 5 2;
-    classDef external fill:#fbb,stroke:#333,stroke-width:2px,stroke-dasharray: 2 2;
+    classDef core fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef adapter fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef service fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef external fill:#fbb,stroke:#333,stroke-width:2px;
     
     %% Apply styles
     class Communication,Commitment,Reminder,CommitmentID core;
