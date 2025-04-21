@@ -111,14 +111,14 @@ class TestReminder:
     def test_is_due(self):
         """Test that a reminder can determine if it's due."""
         # Arrange
-        past_time = datetime(2025, 4, 19, 10, 0)  # Due in the past
-        future_time = datetime(2025, 4, 21, 10, 0)  # Due in the future
+        now = datetime.now()
+        past_time = now - timedelta(hours=2)  # Due 2 hours ago
+        future_time = now + timedelta(hours=2)  # Due 2 hours from now
         
         past_reminder = Reminder(when=past_time, message="Past reminder")
         future_reminder = Reminder(when=future_time, message="Future reminder")
         
         # Act & Assert
-        # Assuming today is April 19, 2025 (as per context)
         assert past_reminder.is_due()
         assert not future_reminder.is_due()
         
