@@ -63,3 +63,76 @@ flowchart TD
 4. You get notified before you need to leave for your commitments
 
 This system helps bridge the gap between your intentions (in messages) and your actions (remembering commitments), especially helpful for those of us with executive function challenges!
+
+## Setup Guide for Developers
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
+- Minimum 8GB of free disk space (preferably on D: drive for Windows users)
+- Python 3.11+ (for local development without Docker)
+- [Poetry](https://python-poetry.org/docs/#installation) (optional, for local development)
+
+### Quick Start with Docker
+
+The simplest way to run AuDHD-LifeCoach is using Docker:
+
+```bash
+# Build the Docker image
+docker-compose -f docker-compose.simple.yml build
+
+# Run the application
+docker-compose -f docker-compose.simple.yml up
+```
+
+This will start the application on [http://localhost:8000](http://localhost:8000).
+
+> **Note for Windows Users:** The Docker configuration mounts a volume at `D:/HuggingFaceModels` to store large AI model files. Make sure this directory exists or modify the path in `docker-compose.simple.yml` if needed.
+
+### Local Development Setup
+
+If you prefer to run the application directly on your machine:
+
+1. Install dependencies:
+   ```bash
+   # Using pip
+   pip install -r requirements.txt
+   
+   # OR using Poetry
+   poetry install
+   ```
+
+2. Run the application:
+   ```bash
+   python -m audhd_lifecoach.main
+   ```
+
+### Project Structure
+
+- `src/audhd_lifecoach/`: Core application code
+  - `adapters/`: External integrations (AI, API, repositories)
+  - `application/`: Application services and use cases
+  - `core/`: Domain entities and interfaces
+- `tests/`: Test suite
+  - `integration/`: End-to-end and integration tests
+  - `unit/`: Unit tests for individual components
+
+### Docker Configuration
+
+This project uses a simplified Docker setup with:
+- `Dockerfile.simple`: Contains the build configuration
+- `docker-compose.simple.yml`: Orchestrates the container deployment
+- `docker-entrypoint.py`: Entry point script for the container
+
+The Docker configuration pre-downloads the necessary Hugging Face models during the build process and stores them in a mounted volume to conserve space.
+
+### Running Tests
+
+```bash
+pytest tests/unit
+pytest tests/integration
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
