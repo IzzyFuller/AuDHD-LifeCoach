@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Debug Hugging Face Transformer Test",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [
@@ -17,7 +17,7 @@
         },
         {
             "name": "Debug Current Test File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [
@@ -31,7 +31,7 @@
         },
         {
             "name": "Debug Integration Test - Communication to Reminder",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/.venv/Scripts/pytest",
             "args": [
@@ -44,7 +44,7 @@
         },
         {
             "name": "Debug All Integration Tests",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/.venv/Scripts/pytest",
             "args": [
@@ -56,6 +56,19 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug FastAPI Application",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "audhd_lifecoach.main",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         }
     ]
 }

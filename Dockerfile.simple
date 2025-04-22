@@ -1,0 +1,33 @@
+# Simple Dockerfile that installs minimal dependencies
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set workdir
+WORKDIR /app
+
+# Copy and install requirements first (for better caching)
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy source code
+COPY src /app/src
+COPY docker-entrypoint.py /app/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+# Set Hugging Face cache directory to mounted volume
+ENV HF_HOME=/huggingface
+
+# Pre-download the Hugging Face model to ensure it's available
+RUN python -c "from transformers import pipeline; pipeline('ner', model='dslim/bert-base-NER')"
+
+# Expose port
+EXPOSE 8000
+
+# Run the entry point script
+CMD ["python", "docker-entrypoint.py"]

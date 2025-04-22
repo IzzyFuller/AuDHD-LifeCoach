@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+    volumes:
+      # Store Hugging Face models on the D: drive
+      - D:/HuggingFaceModels:/huggingface
+    restart: unless-stopped

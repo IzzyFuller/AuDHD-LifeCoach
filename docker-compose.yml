@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      # Don't download models at startup to avoid disk space issues
+      - TRANSFORMERS_OFFLINE=0
+    volumes:
+      - ./src:/app/src
+      # Store Hugging Face models on the D: drive to avoid filling up C: drive
+      - D:/HuggingFaceModels:/models
+    restart: unless-stopped

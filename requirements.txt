@@ -1,0 +1,10 @@
+fastapi>=0.100.0
+pydantic>=2.0.0
+uvicorn>=0.20.0
+starlette>=0.27.0
+transformers>=4.30.2
+onnxruntime>=1.15.0
+numpy>=1.24.3
+python-dateutil>=2.8.2
+dateparser>=1.1.0
+torch>=2.0.0  # Adding PyTorch which is required by Hugging Face Transformers

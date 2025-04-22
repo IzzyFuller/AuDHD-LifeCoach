@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.minimal
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      # Setting the Python path to include our source code
+      - PYTHONPATH=/app:/app/.venv/lib/site-packages
+    volumes:
+      # Mount the virtual environment's site-packages for the dependencies
+      - ./.venv/Lib/site-packages:/app/.venv/lib/site-packages
+      # Store Hugging Face models on the D: drive
+      - D:/HuggingFaceModels:/root/.cache/huggingface
+    restart: unless-stopped
