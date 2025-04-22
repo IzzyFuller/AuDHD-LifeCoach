@@ -70,7 +70,7 @@ This system helps bridge the gap between your intentions (in messages) and your 
 
 - [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
 - Minimum 8GB of free disk space (preferably on D: drive for Windows users)
-- Python 3.11+ (for local development without Docker)
+- Python 3.12+ (for local development without Docker)
 - [Poetry](https://python-poetry.org/docs/#installation) (optional, for local development)
 
 ### Quick Start with Docker

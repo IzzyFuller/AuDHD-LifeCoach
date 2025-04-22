@@ -1,9 +1,24 @@
 {
+    "python.envFile": "${workspaceFolder}/.env",
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestArgs": [
-        "tests"
+        "tests",
+        "-v"
     ],
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe"
+    "python.defaultInterpreterPath": "C:\\Users\\Izzy\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\audhd-lifecoach-HDr0pTL6-py3.12\\Scripts\\python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/src"
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "black",
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+    },
+    "python.testing.cwd": "${workspaceFolder}",
+    "python.poetryPath": "C:\\Users\\Izzy\\AppData\\Roaming\\pypoetry\\venv\\Scripts\\poetry.exe"
 }
