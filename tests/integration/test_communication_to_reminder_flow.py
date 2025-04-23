@@ -62,13 +62,18 @@ class TestCommunicationToReminderFlow:
         # Using 15:30 as the expected time from our message
         expected_hour = 15
         expected_minute = 30
-        assert commitment.when.hour == expected_hour
-        assert commitment.when.minute == expected_minute
+        
+        # Check that the time range includes our expected start time
+        assert commitment.start_time.hour == expected_hour, f"Expected start hour {expected_hour}, got {commitment.start_time.hour}"
+        assert commitment.start_time.minute == expected_minute, f"Expected start minute {expected_minute}, got {commitment.start_time.minute}"
+        
+        # By default, end_time should be after start_time
+        assert commitment.end_time > commitment.start_time, "End time should be after start time"
         
         # 7. Verify reminder details
         assert not reminder.acknowledged
-        # Reminder time should be before the commitment time
-        assert reminder.when < commitment.when
+        # Reminder time should be before the commitment start time
+        assert reminder.when < commitment.start_time, "Reminder should be before commitment start time"
         # Reminder should include relevant info
         assert "Friend" in reminder.message
     
@@ -143,19 +148,32 @@ class TestCommunicationToReminderFlow:
         # Check time references
         if time_range:
             min_hour, max_hour = time_range
-            assert min_hour <= commitment.when.hour <= max_hour, \
-                f"Expected hour between {min_hour}-{max_hour}, got {commitment.when.hour}"
+            
+            # For implicit times like "morning" or "evening", the commitment should span the time range
+            assert min_hour <= commitment.start_time.hour <= max_hour, \
+                f"Expected start hour between {min_hour}-{max_hour}, got {commitment.start_time.hour}"
+                
+            # End time should be within or at the end of the range, or extend beyond it
+            assert commitment.end_time >= commitment.start_time, "End time should be at or after start time"
+            
+            # If the range is broader (like morning or evening), check that we've set a reasonable duration
+            if max_hour - min_hour >= 3:
+                assert (commitment.end_time - commitment.start_time).total_seconds() > 0, \
+                    "For broad time ranges, commitment should have a non-zero duration"
         else:
-            # If no specific time range, just ensure it's a valid datetime
-            assert commitment.when > datetime.now(), "Expected future datetime for commitment"
+            # If no specific time range, just ensure it's a valid datetime in the future
+            assert commitment.start_time > datetime.now(), "Expected future datetime for commitment"
             
             # For day references like "Friday", check it's within the next week
-            days_difference = (commitment.when.date() - today).days
+            days_difference = (commitment.start_time.date() - today).days
             assert 0 <= days_difference <= 7, f"Expected commitment within the next week, got {days_difference} days from now"
+            
+            # End time should be after start time
+            assert commitment.end_time > commitment.start_time, "End time should be after start time"
         
         # Verify reminder details
         assert not reminder.acknowledged
-        assert reminder.when < commitment.when
+        assert reminder.when < commitment.start_time, "Reminder should be before commitment start time"
         # Also update the reminder message check to look for core name only
         assert core_name in reminder.message
 
@@ -201,9 +219,15 @@ class TestCommunicationToReminderFlow:
         assert "project" in commitment.what.lower() or "meeting" in commitment.what.lower() or "discuss" in commitment.what.lower()
         
         # Should be next Monday at 10 AM
-        assert commitment.when.hour == 10, f"Expected hour 10, got {commitment.when.hour}"
-        assert commitment.when.minute == 0, f"Expected minute 0, got {commitment.when.minute}"
+        expected_hour = 10
+        expected_minute = 0
+        assert commitment.start_time.hour == expected_hour, f"Expected start hour {expected_hour}, got {commitment.start_time.hour}"
+        assert commitment.start_time.minute == expected_minute, f"Expected start minute {expected_minute}, got {commitment.start_time.minute}"
+        
+        # A meeting would typically last at least 30 minutes
+        assert commitment.end_time >= commitment.start_time + timedelta(minutes=30), \
+            "Meeting should have a reasonable duration"
         
         # Verify reminder details
         assert not reminder.acknowledged
-        assert reminder.when < commitment.when
+        assert reminder.when < commitment.start_time, "Reminder should be before commitment start time"

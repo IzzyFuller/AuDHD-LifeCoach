@@ -53,7 +53,9 @@ class ProcessCommunication:
                 acknowledged=reminder.acknowledged,
                 commitment_what=reminder.commitment.what,
                 commitment_who=reminder.commitment.who,
-                commitment_when=reminder.commitment.when
+                commitment_start_time=reminder.commitment.start_time,
+                commitment_end_time=reminder.commitment.end_time,
+                commitment_where=reminder.commitment.where
             )
             reminder_dtos.append(reminder_dto)
         

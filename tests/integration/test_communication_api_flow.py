@@ -67,12 +67,17 @@ class TestCommunicationAPIFlow:
         assert "Meeting or appointment" in reminder["commitment_what"] or "call" in reminder["commitment_what"].lower(), f"Unexpected commitment type: {reminder['commitment_what']}"
         
         # Using 15:30 as the expected time from our message
-        commitment_when = datetime.fromisoformat(reminder["commitment_when"])
-        assert commitment_when.hour == 15, f"Expected hour 15, got {commitment_when.hour}"
-        assert commitment_when.minute == 30, f"Expected minute 30, got {commitment_when.minute}"
+        # Check for start_time and end_time instead of when
+        commitment_start = datetime.fromisoformat(reminder["commitment_start_time"])
+        commitment_end = datetime.fromisoformat(reminder["commitment_end_time"])
+        
+        assert commitment_start.hour == 15, f"Expected start hour 15, got {commitment_start.hour}"
+        assert commitment_start.minute == 30, f"Expected start minute 30, got {commitment_start.minute}"
+        
+        # Make sure end_time is after start_time
+        assert commitment_end > commitment_start, "Commitment end time should be after start time"
         
         # 9. Verify reminder time and acknowledgment
         reminder_when = datetime.fromisoformat(reminder["when"])
-        commitment_when = datetime.fromisoformat(reminder["commitment_when"])
-        assert reminder_when < commitment_when, "Reminder time should be before commitment time"
+        assert reminder_when < commitment_start, "Reminder time should be before commitment start time"
         assert reminder["acknowledged"] is False, "New reminder should not be acknowledged"

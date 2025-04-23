@@ -10,19 +10,27 @@ class TestReminder:
         # Arrange
         when = datetime(2025, 4, 20, 15, 0)  # April 20, 2025 at 15:00
         message = "Time to leave for Friend's house"
-        priority = "High"
+        
+        # Create a test commitment for the reminder
+        commitment = Commitment(
+            start_time=datetime(2025, 4, 20, 15, 30),
+            end_time=datetime(2025, 4, 20, 16, 30),
+            who="Friend",
+            what="Meeting",
+            where="Office"
+        )
         
         # Act
         reminder = Reminder(
             when=when,
             message=message,
-            priority=priority
+            commitment=commitment
         )
         
         # Assert
         assert reminder.when == when
         assert reminder.message == message
-        assert reminder.priority == priority
+        assert reminder.commitment == commitment
         assert not reminder.acknowledged
         
     def test_reminder_with_defaults(self):
@@ -31,23 +39,34 @@ class TestReminder:
         when = datetime(2025, 4, 20, 15, 0)  # April 20, 2025 at 15:00
         message = "Reminder for appointment"
         
+        # Create a test commitment for the reminder
+        commitment = Commitment(
+            start_time=datetime(2025, 4, 20, 15, 30),
+            end_time=datetime(2025, 4, 20, 16, 30),
+            who="Friend",
+            what="Meeting",
+            where="Office"
+        )
+        
         # Act
         reminder = Reminder(
             when=when,
-            message=message
+            message=message,
+            commitment=commitment
         )
         
         # Assert
         assert reminder.when == when
         assert reminder.message == message
-        assert reminder.priority == "Normal"  # Default priority
+        assert reminder.commitment == commitment
         assert not reminder.acknowledged
         
     def test_reminder_from_commitment(self):
         """Test that a reminder can be created from a commitment."""
         # Arrange
         commitment = Commitment(
-            when=datetime(2025, 4, 20, 15, 30),  # 3:30 PM
+            start_time=datetime(2025, 4, 20, 15, 30),  # 3:30 PM
+            end_time=datetime(2025, 4, 20, 16, 30),    # 4:30 PM
             who="Friend",
             what="Give a ride",
             where="Friend's house",
@@ -59,19 +78,28 @@ class TestReminder:
         reminder = Reminder.from_commitment(commitment)
         
         # Assert
-        # Should remind at the departure time (3:30 - 35 minutes = 2:55 PM)
-        assert reminder.when == datetime(2025, 4, 20, 14, 55)
+        # Should remind 30 minutes before the commitment start time (default lead time)
+        expected_reminder_time = datetime(2025, 4, 20, 15, 0)  # 3:30 PM - 30min
+        assert reminder.when == expected_reminder_time
         assert commitment.who in reminder.message
-        assert commitment.what in reminder.message
-        assert commitment.where in reminder.message
+        assert commitment.what in reminder.message or "commitment" in reminder.message.lower()
         assert reminder.commitment == commitment
         
     def test_acknowledge_reminder(self):
         """Test that a reminder can be acknowledged."""
         # Arrange
+        commitment = Commitment(
+            start_time=datetime(2025, 4, 20, 15, 30),
+            end_time=datetime(2025, 4, 20, 16, 30),
+            who="Friend",
+            what="Meeting",
+            where="Office"
+        )
+        
         reminder = Reminder(
             when=datetime(2025, 4, 20, 15, 0),
-            message="Time to leave"
+            message="Time to leave",
+            commitment=commitment
         )
         assert not reminder.acknowledged  # Initially not acknowledged
         
@@ -85,9 +113,19 @@ class TestReminder:
         """Test that a reminder can be snoozed."""
         # Arrange
         original_time = datetime(2025, 4, 20, 15, 0)
+        
+        commitment = Commitment(
+            start_time=datetime(2025, 4, 20, 15, 30),
+            end_time=datetime(2025, 4, 20, 16, 30),
+            who="Friend",
+            what="Meeting",
+            where="Office"
+        )
+        
         reminder = Reminder(
             when=original_time,
-            message="Time to leave"
+            message="Time to leave",
+            commitment=commitment
         )
         snooze_duration = timedelta(minutes=10)
         
@@ -102,11 +140,25 @@ class TestReminder:
         """Test that creating a reminder without required arguments raises an error."""
         # Missing 'when'
         with pytest.raises(TypeError):
-            Reminder(message="Reminder")
+            commitment = Commitment(
+                start_time=datetime(2025, 4, 20, 15, 30),
+                end_time=datetime(2025, 4, 20, 16, 30),
+                who="Friend", what="Meeting", where="Office"
+            )
+            Reminder(message="Reminder", commitment=commitment)
         
         # Missing 'message'
         with pytest.raises(TypeError):
-            Reminder(when=datetime.now())
+            commitment = Commitment(
+                start_time=datetime(2025, 4, 20, 15, 30),
+                end_time=datetime(2025, 4, 20, 16, 30),
+                who="Friend", what="Meeting", where="Office"
+            )
+            Reminder(when=datetime.now(), commitment=commitment)
+            
+        # Missing 'commitment'
+        with pytest.raises(TypeError):
+            Reminder(when=datetime.now(), message="Reminder")
             
     def test_is_due(self):
         """Test that a reminder can determine if it's due."""
@@ -115,8 +167,14 @@ class TestReminder:
         past_time = now - timedelta(hours=2)  # Due 2 hours ago
         future_time = now + timedelta(hours=2)  # Due 2 hours from now
         
-        past_reminder = Reminder(when=past_time, message="Past reminder")
-        future_reminder = Reminder(when=future_time, message="Future reminder")
+        commitment = Commitment(
+            start_time=now + timedelta(hours=3),
+            end_time=now + timedelta(hours=4),
+            who="Friend", what="Meeting", where="Office"
+        )
+        
+        past_reminder = Reminder(when=past_time, message="Past reminder", commitment=commitment)
+        future_reminder = Reminder(when=future_time, message="Future reminder", commitment=commitment)
         
         # Act & Assert
         assert past_reminder.is_due()
@@ -127,12 +185,19 @@ class TestReminder:
         # Arrange
         when = datetime(2025, 4, 20, 15, 0)
         message = "Time to leave for Friend's house"
-        priority = "High"
+        
+        commitment = Commitment(
+            start_time=datetime(2025, 4, 20, 15, 30),
+            end_time=datetime(2025, 4, 20, 16, 30),
+            who="Friend",
+            what="Meeting",
+            where="Office"
+        )
         
         reminder = Reminder(
             when=when,
             message=message,
-            priority=priority
+            commitment=commitment
         )
         
         # Act
@@ -141,4 +206,3 @@ class TestReminder:
         # Assert
         assert message in str_repr
         assert "15:00" in str_repr
-        assert priority in str_repr

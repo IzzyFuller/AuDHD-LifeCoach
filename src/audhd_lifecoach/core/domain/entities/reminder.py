@@ -1,8 +1,8 @@
 """
-Reminder entity represents a notification to alert about an upcoming obligation or task.
+Reminder entity represents a notification about a commitment.
 """
 from datetime import datetime, timedelta
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from audhd_lifecoach.core.domain.entities.commitment import Commitment
@@ -11,66 +11,88 @@ from audhd_lifecoach.core.domain.entities.commitment import Commitment
 @dataclass
 class Reminder:
     """
-    Represents a reminder notification for an upcoming obligation or task.
+    Represents a reminder notification for a commitment.
     
-    A reminder has essential attributes like when it should trigger and what message to display.
-    It can also include optional information like priority and a reference to an associated commitment.
+    Reminders are created from commitments and have a scheduled notification time,
+    a reference to the commitment, and a message.
     """
-    # Required attributes
+    # The specific time when this reminder should be sent
     when: datetime
+    
+    # The commitment this reminder is for
+    commitment: Commitment
+    
+    # The message to display/send in the reminder
     message: str
     
-    # Optional attributes with defaults
-    priority: str = "Normal"
+    # Whether the user has seen and acknowledged this reminder
     acknowledged: bool = False
-    commitment: Optional[Commitment] = None
     
     @classmethod
-    def from_commitment(cls, commitment: Commitment) -> "Reminder":
+    def from_commitment(cls, commitment: Commitment, 
+                        lead_time: timedelta = timedelta(minutes=30),
+                        message: Optional[str] = None) -> 'Reminder':
         """
         Create a reminder from a commitment.
         
-        This creates a reminder scheduled at the commitment's departure time
-        with a message that includes details about the commitment.
+        By default, sets the reminder time to 30 minutes before the commitment's start time.
         
         Args:
-            commitment: The commitment to create a reminder from
+            commitment: The commitment to create a reminder for
+            lead_time: How long before the commitment the reminder should be sent
+            message: Optional custom message (will be auto-generated if None)
             
         Returns:
-            A new Reminder instance
+            A new Reminder instance for the commitment
         """
-        departure_time = commitment.calculate_departure_time()
+        # Calculate when the reminder should be sent
+        reminder_time = commitment.start_time - lead_time
         
-        message = (f"Time to prepare for: {commitment.what} "
-                  f"with {commitment.who} at {commitment.where}")
+        # Generate a default message if none provided
+        if message is None:
+            # Format the time based on whether it's today or a future date
+            today = datetime.now().date()
+            if commitment.start_time.date() == today:
+                time_str = commitment.start_time.strftime("%H:%M")
+                message = f"Reminder: You have a commitment with {commitment.who} at {time_str} today."
+            else:
+                date_time_str = commitment.start_time.strftime("%Y-%m-%d at %H:%M")
+                message = f"Reminder: You have a commitment with {commitment.who} on {date_time_str}."
         
         return cls(
-            when=departure_time,
-            message=message,
-            commitment=commitment
+            when=reminder_time,
+            commitment=commitment,
+            message=message
         )
     
     def acknowledge(self) -> None:
-        """Mark this reminder as acknowledged."""
+        """
+        Mark the reminder as acknowledged by the user.
+        
+        This indicates the user has seen and acknowledged the reminder.
+        """
         self.acknowledged = True
     
     def snooze(self, duration: timedelta) -> None:
         """
-        Delay this reminder by the specified duration.
+        Postpone the reminder by the specified duration.
         
         Args:
-            duration: How long to delay the reminder
+            duration: How long to postpone the reminder
         """
-        self.when += duration
+        self.when = self.when + duration
     
     def is_due(self) -> bool:
         """
-        Check if this reminder is currently due (i.e., its time has passed).
+        Check if the reminder is due (time to show it).
+        
+        A reminder is considered due when its scheduled time has passed
+        and it hasn't been acknowledged yet.
         
         Returns:
-            True if the reminder is due, False otherwise
+            bool: True if the reminder is due, False otherwise
         """
-        return datetime.now() >= self.when
+        return datetime.now() >= self.when and not self.acknowledged
     
     def __str__(self) -> str:
         """
@@ -79,6 +101,5 @@ class Reminder:
         Returns:
             str: A human-readable description of the reminder
         """
-        time_str = self.when.strftime("%Y-%m-%d %H:%M")
-        ack_status = "Acknowledged" if self.acknowledged else "Not acknowledged"
-        return f"[{self.priority}] {self.message} - Due at {time_str} - {ack_status}"
+        status = "Acknowledged" if self.acknowledged else "Not acknowledged"
+        return f"Reminder at {self.when.strftime('%Y-%m-%d %H:%M')}: {self.message} [{status}]"

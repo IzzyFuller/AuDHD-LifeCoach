@@ -314,6 +314,73 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
         # Default if no specific activity found
         return "Meeting or appointment"
     
+    def _get_time_range(self, time_entity: Dict[str, Any], activity: str) -> Tuple[datetime, datetime]:
+        """
+        Convert a time entity to a start time and end time.
+        
+        This method determines an appropriate duration for different activities
+        and time references, creating a realistic time range.
+        
+        Args:
+            time_entity: The time entity extracted from text
+            activity: The identified activity
+            
+        Returns:
+            A tuple of (start_time, end_time) for the commitment
+        """
+        start_time = time_entity['parsed_datetime']
+        time_word = time_entity['word'].lower()
+        
+        # Set default duration based on the activity and time reference
+        duration = timedelta(minutes=60)  # Default 1 hour for most commitments
+        
+        # Adjust duration based on the activity
+        if any(act in activity.lower() for act in ["lunch", "dinner", "breakfast"]):
+            duration = timedelta(minutes=90)  # Meals typically take longer
+        elif any(act in activity.lower() for act in ["meeting", "discuss"]):
+            duration = timedelta(minutes=60)  # Standard meeting length
+        elif any(act in activity.lower() for act in ["call"]):
+            duration = timedelta(minutes=30)  # Calls are typically shorter
+        elif any(act in activity.lower() for act in ["checkup", "appointment"]):
+            duration = timedelta(minutes=45)  # Medical appointments
+        elif any(act in activity.lower() for act in ["recital", "concert", "performance"]):
+            duration = timedelta(hours=2)  # Performances are longer
+            
+        # Adjust for time of day references
+        if "morning" in time_word:
+            # For morning references (e.g., "tomorrow morning"), create a broader range
+            # If it's a specific time in the morning, keep the default duration
+            if re.search(r'\d{1,2}:\d{2}|\d{1,2}\s*(am|pm)', time_word, re.IGNORECASE) is None:
+                # No specific time, make it a 3-hour window in the morning
+                end_time = start_time + timedelta(hours=3)
+                return start_time, end_time
+                
+        elif "afternoon" in time_word:
+            if re.search(r'\d{1,2}:\d{2}|\d{1,2}\s*(am|pm)', time_word, re.IGNORECASE) is None:
+                # No specific time, make it a 4-hour window in the afternoon
+                end_time = start_time + timedelta(hours=4)
+                return start_time, end_time
+                
+        elif "evening" in time_word:
+            if re.search(r'\d{1,2}:\d{2}|\d{1,2}\s*(am|pm)', time_word, re.IGNORECASE) is None:
+                # No specific time, make it a 3-hour window in the evening
+                end_time = start_time + timedelta(hours=3)
+                return start_time, end_time
+                
+        # For day references without time (e.g., "Friday")
+        elif any(day in time_word for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+            if re.search(r'\d{1,2}:\d{2}|\d{1,2}\s*(am|pm)', time_word, re.IGNORECASE) is None:
+                # If it's a workday, make it a workday-length commitment (8 hours)
+                if start_time.weekday() < 5:  # Monday-Friday
+                    end_time = start_time + timedelta(hours=8)
+                else:  # Weekend days
+                    end_time = start_time + timedelta(hours=4)  # Shorter commitment on weekends
+                return start_time, end_time
+        
+        # Default case: use the calculated duration
+        end_time = start_time + duration
+        return start_time, end_time
+            
     def identify_commitments(self, communication: Communication) -> List[Commitment]:
         """
         Identify any commitments contained within a communication.
@@ -361,16 +428,19 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
         if time_entities:
             # Use the first time entity found
             time_entity = time_entities[0]
-            parsed_datetime = time_entity['parsed_datetime']
+            
+            # Get appropriate start and end times
+            start_time, end_time = self._get_time_range(time_entity, activity)
             
             # Extract location if available
             where = "location mentioned in message"
             if location_entity:
                 where = location_entity['word']
             
-            # Create commitment
+            # Create commitment with time range
             commitment = Commitment(
-                when=parsed_datetime,
+                start_time=start_time,
+                end_time=end_time,
                 who=person,
                 what=activity,
                 where=where

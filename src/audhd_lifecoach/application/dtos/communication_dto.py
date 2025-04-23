@@ -17,11 +17,13 @@ class CommunicationRequestDTO(BaseModel):
 class ReminderResponseDTO(BaseModel):
     """DTO for reminder information in API responses."""
     message: str
-    when: datetime
+    when: datetime  # The single timestamp when the reminder should be triggered
     acknowledged: bool
     commitment_what: str
     commitment_who: str
-    commitment_when: datetime
+    commitment_start_time: datetime  # Start time of the commitment (replacing when)
+    commitment_end_time: datetime    # End time of the commitment (new field)
+    commitment_where: Optional[str] = None
 
 
 class CommunicationResponseDTO(BaseModel):

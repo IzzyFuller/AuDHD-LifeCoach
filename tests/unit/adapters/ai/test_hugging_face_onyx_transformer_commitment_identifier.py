@@ -42,8 +42,11 @@ class TestHuggingFaceONYXTransformerCommitmentIdentifier:
         
         # Assert
         assert len(commitments) == 1
-        assert commitments[0].when.hour == 15
-        assert commitments[0].when.minute == 30
+        # Check start_time instead of when
+        assert commitments[0].start_time.hour == 15
+        assert commitments[0].start_time.minute == 30
+        # Also check that end_time is after start_time
+        assert commitments[0].end_time > commitments[0].start_time
         assert commitments[0].who == "Friend"
         assert "coffee shop" in commitments[0].where.lower()
     

@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 from audhd_lifecoach.core.interfaces.commitment_identifiable import CommitmentIdentifiable
@@ -24,11 +24,13 @@ class SimpleCommitmentIdentifier:
             any(phrase in communication.content.lower() for phrase in ["i'll", "will", "going to"])):
             
             # Extract time from the message (simplified for testing)
-            when = datetime(2025, 4, 19, 15, 30)  # Hardcoded for test simplicity
+            start_time = datetime(2025, 4, 19, 15, 30)  # Hardcoded for test simplicity
+            end_time = start_time + timedelta(hours=1)  # Default 1-hour duration
             
-            # Create a commitment
+            # Create a commitment with start_time and end_time
             commitment = Commitment(
-                when=when,
+                start_time=start_time,
+                end_time=end_time,
                 who=communication.recipient,
                 what="Meet up",  # Simplified extraction
                 where="Location mentioned in message"  # Simplified extraction
@@ -73,8 +75,11 @@ class TestCommitmentIdentifiable:
         
         # Assert
         assert len(commitments) == 1
-        assert commitments[0].when.hour == 15
-        assert commitments[0].when.minute == 30
+        # Check start_time instead of when
+        assert commitments[0].start_time.hour == 15
+        assert commitments[0].start_time.minute == 30
+        # Verify that end_time is after start_time
+        assert commitments[0].end_time > commitments[0].start_time
         assert commitments[0].who == "Friend"
     
     def test_identify_commitments_without_commitment(self):
