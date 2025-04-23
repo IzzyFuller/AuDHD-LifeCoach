@@ -6,9 +6,10 @@ from typing import Dict, Any
 
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
 from audhd_lifecoach.adapters.api.communication_controller import CommunicationController
+from audhd_lifecoach.adapters.api.health_controller import HealthController
 from audhd_lifecoach.application.interfaces.web_app_interface import WebAppInterface
-from audhd_lifecoach.application.services.health_service import get_health_info
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationResponseDTO
+from audhd_lifecoach.application.dtos.health_dto import HealthCheckResponseDTO
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
@@ -22,6 +23,9 @@ def create_app() -> WebAppInterface:
         description="A life coach application for people with AuDHD"
     )
     
+    # Initialize controllers
+    health_controller = HealthController()
+    
     # Initialize dependencies for communication processing
     identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
@@ -34,8 +38,8 @@ def create_app() -> WebAppInterface:
     web_app.register_route(
         path="/health",
         http_method="GET",
-        handler_func=get_health_info,
-        response_model=get_health_info.__annotations__["return"],
+        handler_func=health_controller.get_health_info,
+        response_model=HealthCheckResponseDTO,
         tags=["System"]
     )
     
