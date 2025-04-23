@@ -15,7 +15,7 @@ from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.domain.entities.commitment import Commitment
 from audhd_lifecoach.core.domain.entities.reminder import Reminder
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
-from audhd_lifecoach.application.services.communication_processor import CommunicationProcessor
+from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 
 
 class TestCommunicationToReminderFlow:

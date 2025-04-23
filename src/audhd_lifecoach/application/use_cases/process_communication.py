@@ -7,7 +7,7 @@ processing it to extract commitments, and creating reminders.
 from typing import List
 
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO, CommunicationResponseDTO, ReminderResponseDTO
-from audhd_lifecoach.application.services.communication_processor import CommunicationProcessor
+from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.core.domain.entities.communication import Communication
 
 
