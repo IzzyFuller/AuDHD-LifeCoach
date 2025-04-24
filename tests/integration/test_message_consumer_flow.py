@@ -279,3 +279,297 @@ class TestMessageConsumerFlow:
         assert len(results) == len(messages), "All messages should return results"
         assert all(result is not None for result in results), "All messages should return non-None results"
         assert all(len(result["reminders"]) > 0 for result in results), "All messages should create reminders"
+    
+    @pytest.mark.integration
+    def test_acknowledge_message_success(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test successful message acknowledgment.
+        
+        This test verifies that the acknowledge_message method correctly calls
+        basic_ack on the channel with the proper delivery tag.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Connect the adapter to set up the channel
+        rabbitmq_adapter.connect()
+        
+        # Call acknowledge_message
+        message_id = "42"  # This should be converted to int(42)
+        result = rabbitmq_adapter.acknowledge_message(message_id)
+        
+        # Verify the result and method call
+        assert result is True, "acknowledge_message should return True on success"
+        mock_channel.basic_ack.assert_called_once_with(delivery_tag=42)
+    
+    @pytest.mark.integration
+    def test_acknowledge_message_not_connected(self):
+        """
+        Test acknowledge_message when not connected to RabbitMQ.
+        
+        This test verifies that the acknowledge_message method returns False
+        when called without first connecting to RabbitMQ.
+        """
+        # Create adapter without connecting
+        adapter = RabbitMQMessageConsumer()
+        
+        # Call acknowledge_message
+        result = adapter.acknowledge_message("42")
+        
+        # Verify the result
+        assert result is False, "acknowledge_message should return False when not connected"
+    
+    @pytest.mark.integration
+    def test_acknowledge_message_exception(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test acknowledge_message when an exception occurs.
+        
+        This test verifies that acknowledge_message handles exceptions correctly
+        and returns False when an error occurs.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Configure mock to raise an exception
+        mock_channel.basic_ack.side_effect = Exception("Test exception")
+        
+        # Connect the adapter
+        rabbitmq_adapter.connect()
+        
+        # Call acknowledge_message
+        result = rabbitmq_adapter.acknowledge_message("42")
+        
+        # Verify the result
+        assert result is False, "acknowledge_message should return False on exception"
+    
+    @pytest.mark.integration
+    def test_reject_message_success(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test successful message rejection.
+        
+        This test verifies that the reject_message method correctly calls
+        basic_reject on the channel with the proper delivery tag and requeue flag.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Connect the adapter to set up the channel
+        rabbitmq_adapter.connect()
+        
+        # Test with requeue=False (default)
+        result1 = rabbitmq_adapter.reject_message("42")
+        
+        # Test with requeue=True
+        result2 = rabbitmq_adapter.reject_message("43", requeue=True)
+        
+        # Verify the results and method calls
+        assert result1 is True, "reject_message should return True on success"
+        assert result2 is True, "reject_message should return True on success"
+        
+        mock_channel.basic_reject.assert_any_call(delivery_tag=42, requeue=False)
+        mock_channel.basic_reject.assert_any_call(delivery_tag=43, requeue=True)
+    
+    @pytest.mark.integration
+    def test_reject_message_not_connected(self):
+        """
+        Test reject_message when not connected to RabbitMQ.
+        
+        This test verifies that the reject_message method returns False
+        when called without first connecting to RabbitMQ.
+        """
+        # Create adapter without connecting
+        adapter = RabbitMQMessageConsumer()
+        
+        # Call reject_message
+        result = adapter.reject_message("42")
+        
+        # Verify the result
+        assert result is False, "reject_message should return False when not connected"
+    
+    @pytest.mark.integration
+    def test_reject_message_exception(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test reject_message when an exception occurs.
+        
+        This test verifies that reject_message handles exceptions correctly
+        and returns False when an error occurs.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Configure mock to raise an exception
+        mock_channel.basic_reject.side_effect = Exception("Test exception")
+        
+        # Connect the adapter
+        rabbitmq_adapter.connect()
+        
+        # Call reject_message
+        result = rabbitmq_adapter.reject_message("42")
+        
+        # Verify the result
+        assert result is False, "reject_message should return False on exception"
+    
+    @pytest.mark.integration
+    def test_connection_exception_handling(self):
+        """
+        Test exception handling during connection.
+        
+        This test verifies that the connect method handles exceptions correctly
+        and returns False when a connection error occurs.
+        """
+        # Patch BlockingConnection to raise an exception
+        with patch('pika.BlockingConnection', side_effect=Exception("Connection error")):
+            # Create adapter and try to connect
+            adapter = RabbitMQMessageConsumer()
+            result = adapter.connect()
+            
+            # Verify the result
+            assert result is False, "connect should return False on exception"
+    
+    @pytest.mark.integration
+    def test_disconnect_exception_handling(self, mock_pika_connection):
+        """
+        Test exception handling during disconnection.
+        
+        This test verifies that the disconnect method handles exceptions correctly
+        and returns False when an error occurs during disconnection.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Create adapter and connect
+        adapter = RabbitMQMessageConsumer()
+        adapter.connect()
+        
+        # Configure mocks to raise exceptions
+        mock_channel.basic_cancel.side_effect = Exception("Cancel error")
+        mock_channel.close.side_effect = Exception("Close error")
+        mock_connection.return_value.close.side_effect = Exception("Connection close error")
+        
+        # Call disconnect
+        result = adapter.disconnect()
+        
+        # Verify the result
+        assert result is False, "disconnect should return False on exception"
+    
+    @pytest.mark.integration
+    def test_consume_messages_not_connected(self):
+        """
+        Test consume_messages when not connected to RabbitMQ.
+        
+        This test verifies that consume_messages handles the case correctly
+        when called without first connecting to RabbitMQ.
+        """
+        # Create adapter without connecting
+        adapter = RabbitMQMessageConsumer()
+        
+        # Define a simple callback
+        def dummy_callback(message):
+            pass
+        
+        # Call consume_messages
+        # This should log an error but not raise an exception
+        adapter.consume_messages("test_queue", dummy_callback)
+        
+        # We can't easily assert on logged messages, but the test passing
+        # indicates that the method handled the error gracefully
+    
+    @pytest.mark.integration
+    def test_consume_messages_exception(self, mock_pika_connection):
+        """
+        Test consume_messages when an exception occurs.
+        
+        This test verifies that consume_messages handles exceptions correctly
+        and calls disconnect when an error occurs.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Configure mock to raise an exception
+        mock_channel.queue_declare.side_effect = Exception("Queue declare error")
+        
+        # Create adapter and connect
+        adapter = RabbitMQMessageConsumer()
+        adapter.connect()
+        
+        # Spy on disconnect to verify it gets called
+        with patch.object(adapter, 'disconnect', wraps=adapter.disconnect) as mock_disconnect:
+            # Define a simple callback
+            def dummy_callback(message):
+                pass
+            
+            # Call consume_messages
+            adapter.consume_messages("test_queue", dummy_callback)
+            
+            # Verify disconnect was called
+            mock_disconnect.assert_called_once()
+    
+    @pytest.mark.integration
+    def test_on_message_json_decode_error(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test _on_message handling of JSON decode errors.
+        
+        This test verifies that the _on_message method correctly handles
+        malformed JSON messages and rejects them.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Connect the adapter
+        rabbitmq_adapter.connect()
+        
+        # Setup a callback
+        callback_mock = MagicMock()
+        rabbitmq_adapter._callback = callback_mock
+        
+        # Create method with delivery tag
+        method = MagicMock()
+        method.delivery_tag = 42
+        
+        # Create properties
+        properties = MagicMock()
+        
+        # Create invalid JSON body
+        body = b'{ this is not valid JSON }'
+        
+        # Call _on_message
+        rabbitmq_adapter._on_message(mock_channel, method, properties, body)
+        
+        # Verify behavior
+        callback_mock.assert_not_called()  # Callback should not be called for invalid JSON
+        mock_channel.basic_reject.assert_called_once_with(delivery_tag=42, requeue=False)
+    
+    @pytest.mark.integration
+    def test_on_message_exception(self, mock_pika_connection, rabbitmq_adapter):
+        """
+        Test _on_message handling of general exceptions.
+        
+        This test verifies that the _on_message method correctly handles
+        exceptions during message processing and requeues the message.
+        """
+        # Unpack mocks
+        mock_connection, mock_channel = mock_pika_connection
+        
+        # Connect the adapter
+        rabbitmq_adapter.connect()
+        
+        # Setup a callback that raises an exception
+        callback_mock = MagicMock(side_effect=Exception("Processing error"))
+        rabbitmq_adapter._callback = callback_mock
+        
+        # Create method with delivery tag
+        method = MagicMock()
+        method.delivery_tag = 42
+        
+        # Create properties
+        properties = MagicMock()
+        
+        # Create valid JSON body
+        body = json.dumps({"test": "data"}).encode('utf-8')
+        
+        # Call _on_message
+        rabbitmq_adapter._on_message(mock_channel, method, properties, body)
+        
+        # Verify behavior
+        callback_mock.assert_called_once()  # Callback should be called
+        mock_channel.basic_reject.assert_called_once_with(delivery_tag=42, requeue=True)
