@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from audhd_lifecoach.application.interfaces.message_consumer_interface import MessageConsumerInterface
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
+from audhd_lifecoach.core.domain.entities.communication import Communication
 
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,6 @@ class MessageConsumerService:
         
         try:
             # Extract the communication data from the message
-            from audhd_lifecoach.core.domain.entities.communication import Communication
             
             # Create a Communication entity from the message data
             communication = Communication(
