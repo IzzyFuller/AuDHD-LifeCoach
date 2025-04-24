@@ -64,6 +64,30 @@ flowchart TD
 
 This system helps bridge the gap between your intentions (in messages) and your actions (remembering commitments), especially helpful for those of us with executive function challenges!
 
+## System Components
+
+AuDHD-LifeCoach has two main components that run from the same codebase:
+
+1. **Web Application**: Processes HTTP requests for immediate commitment analysis
+2. **Message Consumer**: Listens to a message queue for asynchronous processing of communications
+
+```mermaid
+flowchart LR
+    User("User 👤") --> WebApp("Web App 🌐")
+    MessageQueue("Message Queue 📨") --> Consumer("Message Consumer 🔄")
+    WebApp --> CommProcessor("Communication Processor")
+    Consumer --> CommProcessor
+    CommProcessor --> Reminders("Reminders 🔔")
+    
+    classDef component fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef processor fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef external fill:#fbb,stroke:#333,stroke-width:2px;
+    
+    class WebApp,Consumer component;
+    class CommProcessor processor;
+    class User,MessageQueue,Reminders external;
+```
+
 ## Setup Guide for Developers
 
 ### Prerequisites
@@ -79,32 +103,55 @@ The simplest way to run AuDHD-LifeCoach is using Docker:
 
 ```bash
 # Build the Docker image
-docker-compose -f docker-compose.simple.yml build
+docker build -t audhd-lifecoach:latest -f Dockerfile.simple .
 
-# Run the application
+# Run the application with all services
 docker-compose -f docker-compose.simple.yml up
 ```
 
-This will start the application on [http://localhost:8000](http://localhost:8000).
+This will start:
+- The web application on [http://localhost:8000](http://localhost:8000)
+- The message consumer service connected to RabbitMQ
+- RabbitMQ message broker with management UI on [http://localhost:15672](http://localhost:15672) (login: guest/guest)
 
 > **Note for Windows Users:** The Docker configuration mounts a volume at `D:/HuggingFaceModels` to store large AI model files. Make sure this directory exists or modify the path in `docker-compose.simple.yml` if needed.
+
+### Testing the Message Consumer
+
+To test the message consumer functionality:
+
+```bash
+# Send a test message to the queue
+python scripts/send_test_message.py "I'll call you at 15:30 tomorrow."
+```
+
+You can also customize your message:
+
+```bash
+python scripts/send_test_message.py "Your custom message with a commitment"
+```
 
 ### Local Development Setup
 
 If you prefer to run the application directly on your machine:
 
-1. Install dependencies:
+1. Install dependencies using Poetry:
    ```bash
-   # Using pip
-   pip install -r requirements.txt
+   # Install Poetry first if you haven't already
+   curl -sSL https://install.python-poetry.org | python3 -
    
-   # OR using Poetry
+   # Install dependencies
    poetry install
    ```
 
-2. Run the application:
+2. Run the web application:
    ```bash
    python -m audhd_lifecoach.main
+   ```
+
+3. Run the message consumer:
+   ```bash
+   python -m audhd_lifecoach.message_consumer_main
    ```
 
 ### Project Structure
@@ -116,13 +163,19 @@ If you prefer to run the application directly on your machine:
 - `tests/`: Test suite
   - `integration/`: End-to-end and integration tests
   - `unit/`: Unit tests for individual components
+- `scripts/`: Utility scripts
+  - `send_test_message.py`: Tool for sending test messages to RabbitMQ
 
 ### Docker Configuration
 
-This project uses a simplified Docker setup with:
-- `Dockerfile.simple`: Contains the build configuration
-- `docker-compose.simple.yml`: Orchestrates the container deployment
-- `docker-entrypoint.py`: Entry point script for the container
+This project uses a Docker setup with:
+- `Dockerfile.simple`: Contains the build configuration using Poetry
+- `docker-compose.simple.yml`: Orchestrates multiple services:
+  - `webapp`: Web application service
+  - `message-consumer`: Message processing service
+  - `rabbitmq`: Message broker service
+- `docker-entrypoint.py`: Entry point script for the web application
+- `message_consumer_entrypoint.py`: Entry point script for the message consumer
 
 The Docker configuration pre-downloads the necessary Hugging Face models during the build process and stores them in a mounted volume to conserve space.
 
