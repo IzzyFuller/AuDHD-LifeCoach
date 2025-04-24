@@ -72,33 +72,27 @@ class MessageConsumerService:
         if not self._validate_message(message_data):
             logger.warning(f"Received invalid message: {message_data}")
             return None
+        # Extract the communication data from the message
         
-        try:
-            # Extract the communication data from the message
-            
-            # Create a Communication entity from the message data
-            communication = Communication(
-                content=message_data["content"],
-                sender=message_data["sender"],
-                recipient=message_data["recipient"],
-                timestamp=message_data.get("timestamp")
-            )
-            
-            # Process the communication using the correct method name
-            reminders = self.communication_processor.process_communication(communication)
-            
-            # Format the results for return
-            result = {
-                "message_id": message_data.get("message_id", "unknown"),
-                "commitments_found": len(reminders),
-                "reminders": [self._format_reminder(r) for r in reminders]
-            }
-            
-            return result
-            
-        except Exception as e:
-            logger.exception(f"Error processing message: {e}")
-            return {"error": str(e)}
+        # Create a Communication entity from the message data
+        communication = Communication(
+            content=message_data["content"],
+            sender=message_data["sender"],
+            recipient=message_data["recipient"],
+            timestamp=message_data.get("timestamp")
+        )
+        
+        # Process the communication using the correct method name
+        reminders = self.communication_processor.process_communication(communication)
+        
+        # Format the results for return
+        result = {
+            "message_id": message_data.get("message_id", "unknown"),
+            "commitments_found": len(reminders),
+            "reminders": [self._format_reminder(r) for r in reminders]
+        }
+        
+        return result
     
     @staticmethod
     def _format_reminder(reminder) -> Dict[str, Any]:

@@ -55,26 +55,21 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if connection successful, False otherwise
         """
-        try:
-            # Create connection parameters
-            credentials = pika.PlainCredentials(self.username, self.password)
-            parameters = pika.ConnectionParameters(
-                host=self.host,
-                port=self.port,
-                virtual_host=self.virtual_host,
-                credentials=credentials
-            )
-            
-            # Connect to RabbitMQ
-            self._connection = pika.BlockingConnection(parameters)
-            self._channel = self._connection.channel()
-            
-            logger.info(f"Connected to RabbitMQ at {self.host}:{self.port}")
-            return True
-            
-        except Exception as e:
-            logger.exception(f"Failed to connect to RabbitMQ: {e}")
-            return False
+        # Create connection parameters
+        credentials = pika.PlainCredentials(self.username, self.password)
+        parameters = pika.ConnectionParameters(
+            host=self.host,
+            port=self.port,
+            virtual_host=self.virtual_host,
+            credentials=credentials
+        )
+        
+        # Connect to RabbitMQ
+        self._connection = pika.BlockingConnection(parameters)
+        self._channel = self._connection.channel()
+        
+        logger.info(f"Connected to RabbitMQ at {self.host}:{self.port}")
+        return True
     
     def disconnect(self) -> bool:
         """
@@ -83,27 +78,22 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if disconnection successful, False otherwise
         """
-        try:
-            # Cancel consumer if it exists
-            if self._channel and self._consumer_tag:
-                self._channel.basic_cancel(self._consumer_tag)
-                self._consumer_tag = None
+        # Cancel consumer if it exists
+        if self._channel and self._consumer_tag:
+            self._channel.basic_cancel(self._consumer_tag)
+            self._consumer_tag = None
+        
+        # Close channel and connection
+        if self._channel:
+            self._channel.close()
+            self._channel = None
             
-            # Close channel and connection
-            if self._channel:
-                self._channel.close()
-                self._channel = None
-                
-            if self._connection:
-                self._connection.close()
-                self._connection = None
-                
-            logger.info("Disconnected from RabbitMQ")
-            return True
+        if self._connection:
+            self._connection.close()
+            self._connection = None
             
-        except Exception as e:
-            logger.exception(f"Failed to disconnect from RabbitMQ: {e}")
-            return False
+        logger.info("Disconnected from RabbitMQ")
+        return True
     
     def consume_messages(self, queue_name: str, callback: Callable[[Dict[str, Any]], Any]) -> None:
         """
@@ -113,32 +103,23 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
             queue_name: Name of the queue to consume from
             callback: Function to call when a message is received
         """
-        if not self._channel:
-            logger.error("Not connected to RabbitMQ. Call connect() first")
-            return
+        # Store the callback function
+        self._callback = callback
+            
+        # Declare the queue (ensures it exists)
+        self._channel.queue_declare(queue=queue_name, durable=True)
         
-        try:
-            # Store the callback function
-            self._callback = callback
-            
-            # Declare the queue (ensures it exists)
-            self._channel.queue_declare(queue=queue_name, durable=True)
-            
-            # Start consuming messages
-            self._consumer_tag = self._channel.basic_consume(
-                queue=queue_name,
-                on_message_callback=self._on_message,
-                auto_ack=False
-            )
-            
-            logger.info(f"Started consuming messages from queue '{queue_name}'")
-            
-            # Start the IO loop to process messages
-            self._channel.start_consuming()
-            
-        except Exception as e:
-            logger.exception(f"Error consuming messages: {e}")
-            self.disconnect()
+        # Start consuming messages
+        self._consumer_tag = self._channel.basic_consume(
+            queue=queue_name,
+            on_message_callback=self._on_message,
+            auto_ack=False
+        )
+        
+        logger.info(f"Started consuming messages from queue '{queue_name}'")
+        
+        # Start the IO loop to process messages
+        self._channel.start_consuming()
     
     def _on_message(self, channel, method, properties, body) -> None:
         """
@@ -184,19 +165,10 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if successful, False otherwise
         """
-        if not self._channel:
-            logger.error("Not connected to RabbitMQ. Call connect() first")
-            return False
-        
-        try:
-            # In RabbitMQ, the message_id is the delivery tag
-            delivery_tag = int(message_id)
-            self._channel.basic_ack(delivery_tag=delivery_tag)
-            return True
-            
-        except Exception as e:
-            logger.exception(f"Failed to acknowledge message {message_id}: {e}")
-            return False
+        # In RabbitMQ, the message_id is the delivery tag
+        delivery_tag = int(message_id)
+        self._channel.basic_ack(delivery_tag=delivery_tag)
+        return True
     
     def reject_message(self, message_id: str, requeue: bool = False) -> bool:
         """
@@ -209,16 +181,8 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if successful, False otherwise
         """
-        if not self._channel:
-            logger.error("Not connected to RabbitMQ. Call connect() first")
-            return False
-        
-        try:
-            # In RabbitMQ, the message_id is the delivery tag
-            delivery_tag = int(message_id)
-            self._channel.basic_reject(delivery_tag=delivery_tag, requeue=requeue)
-            return True
-            
-        except Exception as e:
-            logger.exception(f"Failed to reject message {message_id}: {e}")
-            return False
+        # In RabbitMQ, the message_id is the delivery tag
+        delivery_tag = int(message_id)
+        self._channel.basic_reject(delivery_tag=delivery_tag, requeue=requeue)
+        return True
+    
