@@ -10,6 +10,7 @@ from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitM
 from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 
 # Configure logging
 logging.basicConfig(
@@ -39,10 +40,13 @@ def create_message_consumer(queue_name: str = "communications") -> MessageConsum
     identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
     
+    # Create the process communication use case
+    process_communication = ProcessCommunication(communication_processor=processor)
+    
     # Create and return the message consumer service
     return MessageConsumerService(
         message_consumer=message_consumer,
-        communication_processor=processor,
+        process_communication_use_case=process_communication,
         queue_name=queue_name
     )
 

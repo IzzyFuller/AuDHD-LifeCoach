@@ -4,13 +4,12 @@ Message Consumer Service.
 This service is responsible for consuming messages from a message queue
 and processing them to extract commitments and create reminders.
 """
-import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from audhd_lifecoach.application.interfaces.message_consumer_interface import MessageConsumerInterface
-from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
-from audhd_lifecoach.core.domain.entities.communication import Communication
+from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
+from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO
 
 
 logger = logging.getLogger(__name__)
@@ -24,18 +23,18 @@ class MessageConsumerService:
     
     def __init__(self, 
                  message_consumer: MessageConsumerInterface, 
-                 communication_processor: CommunicationProcessor,
+                 process_communication_use_case: ProcessCommunication,
                  queue_name: str = "communications"):
         """
         Initialize the message consumer service.
         
         Args:
             message_consumer: The message consumer adapter to use
-            communication_processor: The processor for handling communications
+            process_communication_use_case: The use case for processing communications
             queue_name: The name of the queue to consume from
         """
         self.message_consumer = message_consumer
-        self.communication_processor = communication_processor
+        self.process_communication_use_case = process_communication_use_case
         self.queue_name = queue_name
         self.is_consuming = False
         
@@ -70,49 +69,47 @@ class MessageConsumerService:
         if not self._validate_message(message_data):
             logger.warning(f"Received invalid message: {message_data}")
             return None
-        # Extract the communication data from the message
-        
-        # Create a Communication entity from the message data
-        communication = Communication(
+            
+        # Create a CommunicationRequestDTO from the message data
+        communication_dto = CommunicationRequestDTO(
             content=message_data["content"],
             sender=message_data["sender"],
             recipient=message_data["recipient"],
             timestamp=message_data.get("timestamp")
         )
         
-        # Process the communication using the correct method name
-        reminders = self.communication_processor.process_communication(communication)
+        # Process the communication using the use case
+        response_dto = self.process_communication_use_case.execute(communication_dto)
         
         # Format the results for return
         result = {
             "message_id": message_data.get("message_id", "unknown"),
-            "commitments_found": len(reminders),
-            "reminders": [self._format_reminder(r) for r in reminders]
+            "commitments_found": len(response_dto.reminders),
+            "reminders": [self._format_reminder(r) for r in response_dto.reminders]
         }
         
         return result
     
     @staticmethod
-    def _format_reminder(reminder) -> Dict[str, Any]:
+    def _format_reminder(reminder_dto) -> Dict[str, Any]:
         """
-        Format a reminder entity as a dictionary for the response.
+        Format a reminder DTO as a dictionary for the response.
         
         Args:
-            reminder: The reminder entity to format
+            reminder_dto: The reminder DTO to format
             
         Returns:
             Dict[str, Any]: A dictionary representation of the reminder
         """
-        commitment = reminder.commitment
         return {
-            "when": reminder.when.isoformat(),
-            "message": reminder.message,
-            "acknowledged": reminder.acknowledged,
-            "commitment_who": commitment.who,
-            "commitment_what": commitment.what,
-            "commitment_where": commitment.where,
-            "commitment_start_time": commitment.start_time.isoformat(),
-            "commitment_end_time": commitment.end_time.isoformat(),
+            "when": reminder_dto.when.isoformat(),
+            "message": reminder_dto.message,
+            "acknowledged": reminder_dto.acknowledged,
+            "commitment_who": reminder_dto.commitment_who,
+            "commitment_what": reminder_dto.commitment_what,
+            "commitment_where": reminder_dto.commitment_where,
+            "commitment_start_time": reminder_dto.commitment_start_time.isoformat(),
+            "commitment_end_time": reminder_dto.commitment_end_time.isoformat(),
         }
     
     def _message_callback(self, message_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
