@@ -143,12 +143,6 @@ class TestMessageConsumerFlow:
             "message_id": 1
         }
         
-        # Connect the adapter
-        rabbitmq_adapter.connect()
-        
-        # Set up the message callback in the adapter
-        rabbitmq_adapter.consume_messages("test_queue", message_consumer_service._message_callback)
-        
         # Create method, properties and message body for the message
         method = MagicMock()
         method.delivery_tag = message_data["message_id"]
@@ -158,11 +152,14 @@ class TestMessageConsumerFlow:
         # Setup message delivery using our fixture
         setup_message_delivery(rabbitmq_adapter, [(method, properties, body)])
         
-        # Trigger the message consumption flow
-        mock_channel.start_consuming()
+        # Start the consumer service - this will connect to RabbitMQ and start consuming
+        message_consumer_service.start()
         
         # Verify the channel's basic_ack method was called with the correct delivery tag
         mock_channel.basic_ack.assert_called_once_with(delivery_tag=message_data["message_id"])
+        
+        # Stop the consumer service - this will disconnect from RabbitMQ
+        message_consumer_service.stop()
     
     @pytest.mark.integration
     def test_error_handling_for_invalid_message(self, mock_pika_connection, rabbitmq_adapter, 
@@ -183,12 +180,6 @@ class TestMessageConsumerFlow:
             "message_id": 2
         }
         
-        # Connect the adapter
-        rabbitmq_adapter.connect()
-        
-        # Set up the message callback in the adapter
-        rabbitmq_adapter.consume_messages("test_queue", message_consumer_service._message_callback)
-        
         # Create method, properties and message body for the message
         method = MagicMock()
         method.delivery_tag = invalid_message_data["message_id"]
@@ -198,11 +189,14 @@ class TestMessageConsumerFlow:
         # Setup message delivery using our fixture
         setup_message_delivery(rabbitmq_adapter, [(method, properties, body)])
         
-        # Trigger the message consumption flow
-        mock_channel.start_consuming()
+        # Start the consumer service
+        message_consumer_service.start()
         
         # Verify the RabbitMQ channel's basic_reject was called with the correct delivery tag
         mock_channel.basic_reject.assert_called_once_with(delivery_tag=invalid_message_data["message_id"], requeue=False)
+        
+        # Stop the consumer service
+        message_consumer_service.stop()
     
     @pytest.mark.integration
     def test_multiple_messages_processing(self, mock_pika_connection, rabbitmq_adapter, 
@@ -230,12 +224,6 @@ class TestMessageConsumerFlow:
             }
         ]
         
-        # Connect the adapter
-        rabbitmq_adapter.connect()
-        
-        # Set up the message callback in the adapter
-        rabbitmq_adapter.consume_messages("test_queue", message_consumer_service._message_callback)
-        
         # Create message tuples
         message_tuples = []
         for message in messages:
@@ -248,8 +236,8 @@ class TestMessageConsumerFlow:
         # Setup message delivery using our fixture
         setup_message_delivery(rabbitmq_adapter, message_tuples)
         
-        # Trigger the message consumption flow
-        mock_channel.start_consuming()
+        # Start the consumer service
+        message_consumer_service.start()
         
         # Verify that basic_ack was called once for each message
         assert mock_channel.basic_ack.call_count == len(messages), f"Expected basic_ack to be called {len(messages)} times"
@@ -257,6 +245,9 @@ class TestMessageConsumerFlow:
         # Verify that basic_ack was called with the correct delivery tags
         for message in messages:
             mock_channel.basic_ack.assert_any_call(delivery_tag=message["message_id"])
+            
+        # Stop the consumer service
+        message_consumer_service.stop()
     
     @pytest.mark.integration
     def test_json_decode_error_in_flow(self, mock_pika_connection, rabbitmq_adapter, 
@@ -269,12 +260,6 @@ class TestMessageConsumerFlow:
         """
         # Unpack mocks
         mock_connection, mock_channel = mock_pika_connection
-        
-        # Connect the adapter
-        rabbitmq_adapter.connect()
-        
-        # Set up the message callback in the adapter
-        rabbitmq_adapter.consume_messages("test_queue", message_consumer_service._message_callback)
         
         # Create method with delivery tag
         method = MagicMock()
@@ -290,11 +275,14 @@ class TestMessageConsumerFlow:
         # Setup message delivery using our fixture
         setup_message_delivery(rabbitmq_adapter, [(method, properties, body)])
         
-        # Trigger the message consumption flow
-        mock_channel.start_consuming()
+        # Start the consumer service
+        message_consumer_service.start()
         
         # Verify that the invalid JSON message was rejected
         mock_channel.basic_reject.assert_called_once_with(delivery_tag=delivery_tag, requeue=False)
+        
+        # Stop the consumer service
+        message_consumer_service.stop()
     
     @pytest.mark.integration
     def test_exception_during_processing_in_flow(self, mock_pika_connection, rabbitmq_adapter, 
@@ -316,12 +304,6 @@ class TestMessageConsumerFlow:
             "message_id": 6
         }
         
-        # Connect the adapter
-        rabbitmq_adapter.connect()
-        
-        # Set up the message callback in the adapter
-        rabbitmq_adapter.consume_messages("test_queue", message_consumer_service._message_callback)
-        
         # Create method, properties and message body for the message
         method = MagicMock()
         method.delivery_tag = message_data["message_id"]
@@ -334,11 +316,14 @@ class TestMessageConsumerFlow:
             # Setup message delivery using our fixture
             setup_message_delivery(rabbitmq_adapter, [(method, properties, body)])
             
-            # Trigger the message consumption flow
-            mock_channel.start_consuming()
+            # Start the consumer service
+            message_consumer_service.start()
             
             # Verify the RabbitMQ channel's basic_reject was called with requeue=True
             mock_channel.basic_reject.assert_called_once_with(delivery_tag=message_data["message_id"], requeue=True)
+            
+            # Stop the consumer service
+            message_consumer_service.stop()
     
     @pytest.mark.integration
     def test_disconnect_cleans_up_resources(self, mock_pika_connection, rabbitmq_adapter):

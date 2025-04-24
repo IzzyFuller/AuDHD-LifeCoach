@@ -6,7 +6,6 @@ and processing them to extract commitments and create reminders.
 """
 import json
 import logging
-import threading
 from typing import Any, Dict, List, Optional
 
 from audhd_lifecoach.application.interfaces.message_consumer_interface import MessageConsumerInterface
@@ -39,7 +38,6 @@ class MessageConsumerService:
         self.communication_processor = communication_processor
         self.queue_name = queue_name
         self.is_consuming = False
-        self._consumer_thread = None
         
     def _validate_message(self, message_data: Dict[str, Any]) -> bool:
         """
@@ -154,29 +152,6 @@ class MessageConsumerService:
             self.message_consumer.reject_message(message_id, requeue=True)
             return None
     
-    def _consumer_loop(self) -> None:
-        """
-        Main consumer loop that runs in a separate thread.
-        
-        This method connects to the message broker and starts consuming messages.
-        """
-        try:
-            # Connect to the message broker
-            if not self.message_consumer.connect():
-                logger.error("Failed to connect to the message broker")
-                return
-            
-            # Start consuming messages
-            logger.info(f"Starting to consume messages from queue '{self.queue_name}'")
-            self.message_consumer.consume_messages(self.queue_name, self._message_callback)
-            
-        except Exception as e:
-            logger.exception(f"Error in consumer loop: {e}")
-        finally:
-            # Make sure to disconnect when the loop ends
-            self.message_consumer.disconnect()
-            self.is_consuming = False
-    
     def start(self, block: bool = True) -> None:
         """
         Start consuming messages.
@@ -186,9 +161,6 @@ class MessageConsumerService:
                   will not return until stop() is called. If False, the consumer
                   will run in a separate thread.
         """
-        if self.is_consuming:
-            logger.warning("Message consumer already started")
-            return
             
         # Connect to the message broker first - this is needed in both blocking and non-blocking modes
         connected = self.message_consumer.connect()
@@ -198,32 +170,19 @@ class MessageConsumerService:
         
         self.is_consuming = True
         
-        if block:
-            # Run the consumer loop in the current thread
-            try:
-                # Start consuming messages
-                logger.info(f"Starting to consume messages from queue '{self.queue_name}'")
-                self.message_consumer.consume_messages(self.queue_name, self._message_callback)
-            except Exception as e:
-                logger.exception(f"Error in consumer loop: {e}")
-            finally:
-                # Make sure to disconnect when the loop ends
-                self.message_consumer.disconnect()
-                self.is_consuming = False
-        else:
-            # Run the consumer loop in a separate thread
-            self._consumer_thread = threading.Thread(
-                target=self._consumer_loop, 
-                daemon=True  # Make this a daemon thread so it exits when the main thread exits
-            )
-            self._consumer_thread.start()
-            logger.info("Message consumer started in background thread")
+        try:
+            # Start consuming messages
+            logger.info(f"Starting to consume messages from queue '{self.queue_name}'")
+            self.message_consumer.consume_messages(self.queue_name, self._message_callback)
+        except Exception as e:
+            logger.exception(f"Error in consumer loop: {e}")
+        finally:
+            # Make sure to disconnect when the loop ends
+            self.message_consumer.disconnect()
+            self.is_consuming = False
     
     def stop(self) -> None:
         """Stop consuming messages."""
-        if not self.is_consuming:
-            logger.warning("Message consumer not started")
-            return
         
         logger.info("Stopping message consumer")
         self.is_consuming = False
@@ -231,11 +190,5 @@ class MessageConsumerService:
         # Disconnect from the message broker
         # This should cause the consumer loop to exit
         self.message_consumer.disconnect()
-        
-        # If we're running in a thread, wait for it to finish
-        if self._consumer_thread and self._consumer_thread.is_alive():
-            self._consumer_thread.join(timeout=5.0)  # Wait up to 5 seconds
-            if self._consumer_thread.is_alive():
-                logger.warning("Consumer thread did not exit within timeout")
             
         logger.info("Message consumer stopped")
