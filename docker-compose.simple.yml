@@ -1,15 +1,49 @@
 version: '3.8'
 
 services:
-  app:
+  webapp:
     build:
       context: .
       dockerfile: Dockerfile.simple
+    image: audhd-lifecoach:latest
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
+      - RABBITMQ_HOST=rabbitmq
     volumes:
       # Store Hugging Face models on the D: drive
       - D:/HuggingFaceModels:/huggingface
     restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  message-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    image: audhd-lifecoach:latest
+    command: [ "python", "message_consumer_entrypoint.py" ]
+    environment:
+      - ENVIRONMENT=development
+      - RABBITMQ_HOST=rabbitmq
+    volumes:
+      # Store Hugging Face models on the D: drive
+      - D:/HuggingFaceModels:/huggingface
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # Management interface
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+volumes:
+  rabbitmq_data:

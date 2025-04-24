@@ -1,0 +1,67 @@
+"""
+Main entry point for AuDHD LifeCoach message consumer.
+This file orchestrates the setup of the message consumer service.
+"""
+import logging
+import os
+from typing import Dict, Any
+
+from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitMQMessageConsumer
+from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
+from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
+from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def create_message_consumer(queue_name: str = "communications") -> MessageConsumerService:
+    """Create and configure the message consumer service."""
+    # Get configuration from environment variables or use defaults
+    rabbitmq_host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
+    rabbitmq_port = int(os.environ.get("RABBITMQ_PORT", "5672"))
+    rabbitmq_user = os.environ.get("RABBITMQ_USER", "guest")
+    rabbitmq_pass = os.environ.get("RABBITMQ_PASS", "guest")
+    
+    # Create message consumer adapter (RabbitMQ implementation)
+    message_consumer = RabbitMQMessageConsumer(
+        host=rabbitmq_host,
+        port=rabbitmq_port,
+        username=rabbitmq_user,
+        password=rabbitmq_pass
+    )
+    
+    # Initialize dependencies for commitment processing
+    identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+    processor = CommunicationProcessor(identifier)
+    
+    # Create and return the message consumer service
+    return MessageConsumerService(
+        message_consumer=message_consumer,
+        communication_processor=processor,
+        queue_name=queue_name
+    )
+
+
+def start_message_consumer():
+    """Start the message consumer service."""
+    logger.info("Initializing message consumer service")
+    consumer = create_message_consumer()
+    
+    try:
+        logger.info("Starting message consumer service")
+        consumer.start(block=True)  # Block the thread to keep the consumer running
+    except KeyboardInterrupt:
+        logger.info("Stopping message consumer service due to keyboard interrupt")
+        consumer.stop()
+    except Exception as e:
+        logger.exception(f"Error in message consumer service: {e}")
+        consumer.stop()
+
+
+if __name__ == "__main__":
+    start_message_consumer()
