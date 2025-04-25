@@ -7,7 +7,7 @@ processing it to extract commitments, and creating reminders.
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Any
 
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO, CommunicationResponseDTO, ReminderResponseDTO
@@ -133,7 +133,7 @@ class ProcessCommunication:
         # Prepare the message
         message = {
             "message_id": str(uuid.uuid4()),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "original_communication": {
                 "content": communication_dto.content,
                 "sender": communication_dto.sender,
