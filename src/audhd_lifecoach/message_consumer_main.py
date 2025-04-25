@@ -7,6 +7,7 @@ import os
 from typing import Dict, Any
 
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitMQMessageConsumer
+from audhd_lifecoach.adapters.messaging.rabbitmq_message_publisher import RabbitMQMessagePublisher
 from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
@@ -27,6 +28,7 @@ def create_message_consumer(queue_name: str = "communications") -> MessageConsum
     rabbitmq_port = int(os.environ.get("RABBITMQ_PORT", "5672"))
     rabbitmq_user = os.environ.get("RABBITMQ_USER", "guest")
     rabbitmq_pass = os.environ.get("RABBITMQ_PASS", "guest")
+    exchange_name = os.environ.get("RABBITMQ_EXCHANGE", "audhd_lifecoach")
     
     # Create message consumer adapter (RabbitMQ implementation)
     message_consumer = RabbitMQMessageConsumer(
@@ -36,12 +38,27 @@ def create_message_consumer(queue_name: str = "communications") -> MessageConsum
         password=rabbitmq_pass
     )
     
+    # Create message publisher adapter (RabbitMQ implementation)
+    message_publisher = RabbitMQMessagePublisher(
+        host=rabbitmq_host,
+        port=rabbitmq_port,
+        username=rabbitmq_user,
+        password=rabbitmq_pass
+    )
+    
+    # Connect to RabbitMQ for publishing
+    message_publisher.connect()
+    
     # Initialize dependencies for commitment processing
     identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
     
-    # Create the process communication use case
-    process_communication = ProcessCommunication(communication_processor=processor)
+    # Create the process communication use case with message publisher
+    process_communication = ProcessCommunication(
+        communication_processor=processor,
+        message_publisher=message_publisher,
+        exchange_name=exchange_name
+    )
     
     # Create and return the message consumer service
     return MessageConsumerService(

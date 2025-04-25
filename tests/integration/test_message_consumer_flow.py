@@ -67,7 +67,15 @@ class TestMessageConsumerFlow:
         return adapter
     
     @pytest.fixture
-    def message_consumer_service(self, rabbitmq_adapter):
+    def mock_message_publisher(self):
+        """Create a mock message publisher for the tests."""
+        publisher = MagicMock()
+        publisher.connect.return_value = True
+        publisher.publish_message.return_value = True
+        return publisher
+    
+    @pytest.fixture
+    def message_consumer_service(self, rabbitmq_adapter, mock_message_publisher):
         """
         Create an actual MessageConsumerService with the real RabbitMQMessageConsumer.
         """
@@ -77,8 +85,12 @@ class TestMessageConsumerFlow:
         # Create the communication processor
         communication_processor = CommunicationProcessor(commitment_identifier)
         
-        # Create the process communication use case
-        process_communication = ProcessCommunication(communication_processor=communication_processor)
+        # Create the process communication use case with mock publisher
+        process_communication = ProcessCommunication(
+            communication_processor=communication_processor,
+            message_publisher=mock_message_publisher,
+            exchange_name='test-exchange'
+        )
         
         # Create the message consumer service
         service = MessageConsumerService(
@@ -127,7 +139,8 @@ class TestMessageConsumerFlow:
     
     @pytest.mark.integration
     def test_basic_message_flow_with_one_commitment(self, mock_pika_connection, rabbitmq_adapter, 
-                                                  message_consumer_service, setup_message_delivery):
+                                                  message_consumer_service, setup_message_delivery, 
+                                                  mock_message_publisher):
         """
         Test the basic flow through the message consumer from message to reminder.
         
@@ -161,6 +174,9 @@ class TestMessageConsumerFlow:
         
         # Verify the channel's basic_ack method was called with the correct delivery tag
         mock_channel.basic_ack.assert_called_once_with(delivery_tag=message_data["message_id"])
+        
+        # Verify the message was published
+        mock_message_publisher.publish_message.assert_called_once()
         
         # Stop the consumer service - this will disconnect from RabbitMQ
         message_consumer_service.stop()

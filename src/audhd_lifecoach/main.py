@@ -2,6 +2,7 @@
 Main entry point for AuDHD LifeCoach application.
 This file orchestrates the setup of the application using clean architecture principles.
 """
+import os
 from typing import Dict, Any
 
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
@@ -13,6 +14,7 @@ from audhd_lifecoach.application.dtos.health_dto import HealthCheckResponseDTO
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+from audhd_lifecoach.adapters.messaging.rabbitmq_message_publisher import RabbitMQMessagePublisher
 
 
 def create_app() -> WebAppInterface:
@@ -26,10 +28,35 @@ def create_app() -> WebAppInterface:
     # Initialize controllers
     health_controller = HealthController()
     
+    # Get message broker configuration from environment variables
+    rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
+    rabbitmq_port = int(os.environ.get("RABBITMQ_PORT", "5672"))
+    rabbitmq_user = os.environ.get("RABBITMQ_USER", "guest")
+    rabbitmq_pass = os.environ.get("RABBITMQ_PASS", "guest")
+    exchange_name = os.environ.get("RABBITMQ_EXCHANGE", "audhd_lifecoach")
+    
+    # Initialize the message publisher
+    message_publisher = RabbitMQMessagePublisher(
+        host=rabbitmq_host,
+        port=rabbitmq_port,
+        username=rabbitmq_user,
+        password=rabbitmq_pass
+    )
+    
+    # Connect to RabbitMQ
+    message_publisher.connect()
+    
     # Initialize dependencies for communication processing
     identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
-    process_communication_use_case = ProcessCommunication(processor)
+    
+    # Initialize the use case with the message publisher
+    process_communication_use_case = ProcessCommunication(
+        communication_processor=processor,
+        message_publisher=message_publisher,
+        exchange_name=exchange_name
+    )
+    
     communication_controller = CommunicationController(process_communication_use_case)
     
     # Register routes with application services
