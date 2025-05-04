@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 class RabbitMQMessagePublisher:
     """
     RabbitMQ implementation of the message publisher interface.
+    
+    This implementation assumes all infrastructure (exchanges, queues, bindings)
+    has been pre-provisioned externally (e.g., by Terraform).
     """
     
     def __init__(
@@ -118,34 +121,6 @@ class RabbitMQMessagePublisher:
             logger.error(f"Error disconnecting from RabbitMQ: {e}")
             return False
     
-    def _ensure_exchange_exists(self, exchange: str, exchange_type: str = "topic") -> bool:
-        """
-        Ensure that the exchange exists.
-        
-        Args:
-            exchange: The exchange name
-            exchange_type: The exchange type (topic, direct, fanout, etc.)
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            if not self._channel:
-                logger.error("Not connected to RabbitMQ")
-                return False
-                
-            self._channel.exchange_declare(
-                exchange=exchange,
-                exchange_type=exchange_type,
-                durable=True,  # Survive broker restarts
-                auto_delete=False  # Don't delete when no queues are bound
-            )
-            return True
-            
-        except AMQPError as e:
-            logger.error(f"Failed to declare exchange '{exchange}': {e}")
-            return False
-    
     def publish_message(
         self,
         exchange: str,
@@ -156,6 +131,8 @@ class RabbitMQMessagePublisher:
     ) -> bool:
         """
         Publish a message to RabbitMQ.
+        
+        Assumes the exchange has been pre-provisioned externally.
         
         Args:
             exchange: The exchange to publish to
@@ -168,14 +145,6 @@ class RabbitMQMessagePublisher:
             bool: True if the message was published successfully, False otherwise
         """
         try:
-            if not self._channel:
-                logger.error("Not connected to RabbitMQ")
-                return False
-            
-            # Ensure the exchange exists (topic exchange by default)
-            if not self._ensure_exchange_exists(exchange):
-                return False
-                
             # Convert message to JSON
             message_body = json.dumps(message).encode('utf-8')
             
