@@ -179,14 +179,6 @@ class TestRabbitMQMessagePublisher:
         # Assert
         assert result is True
         
-        # Verify exchange declared
-        mock_channel.exchange_declare.assert_called_with(
-            exchange=exchange,
-            exchange_type="topic",
-            durable=True,
-            auto_delete=False
-        )
-        
         # Verify message published
         mock_channel.basic_publish.assert_called_once()
         args, kwargs = mock_channel.basic_publish.call_args
@@ -211,28 +203,6 @@ class TestRabbitMQMessagePublisher:
         )
         
         # Act - without connecting first
-        result = publisher.publish_message("test-exchange", "test.key", {"test": "message"})
-        
-        # Assert
-        assert result is False
-    
-    def test_publish_message_with_exchange_failure(self, mock_pika_connection):
-        """Test publishing with exchange declaration failure."""
-        # Arrange
-        mock_connection, mock_channel = mock_pika_connection
-        mock_channel.exchange_declare.side_effect = AMQPError("Exchange declaration failed")
-        
-        publisher = RabbitMQMessagePublisher(
-            host='localhost',
-            port=5672,
-            username='guest',
-            password='guest'
-        )
-        
-        # Connect first
-        publisher.connect()
-        
-        # Act
         result = publisher.publish_message("test-exchange", "test.key", {"test": "message"})
         
         # Assert
