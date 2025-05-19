@@ -157,7 +157,8 @@ class TestMessageConsumerFlow:
             "content": "I'll call you at 15:30 tomorrow.",
             "sender": "Me",
             "recipient": "Friend",
-            "message_id": 1
+            "message_id": 1,
+            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         }
         
         # Create method, properties and message body for the message
@@ -234,13 +235,15 @@ class TestMessageConsumerFlow:
                 "content": "I'll call you at 15:30 tomorrow.",
                 "sender": "Me",
                 "recipient": "Friend",
-                "message_id": 1
+                "message_id": 1,
+                "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             },
             {
                 "content": "Let's meet at the coffee shop at 10:00.",
                 "sender": "Me", 
                 "recipient": "Colleague",
-                "message_id": 2
+                "message_id": 2,
+                "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             }
         ]
         

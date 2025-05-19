@@ -3,7 +3,7 @@ Data Transfer Objects for Communication related API requests and responses.
 """
 from datetime import datetime
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import List
 
 
 class CommunicationRequestDTO(BaseModel):
@@ -11,7 +11,7 @@ class CommunicationRequestDTO(BaseModel):
     content: str
     sender: str
     recipient: str
-    timestamp: Optional[datetime] = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class ReminderResponseDTO(BaseModel):
@@ -23,7 +23,7 @@ class ReminderResponseDTO(BaseModel):
     commitment_who: str
     commitment_start_time: datetime  # Start time of the commitment (replacing when)
     commitment_end_time: datetime    # End time of the commitment (new field)
-    commitment_where: Optional[str] = None
+    commitment_where: str|None = None
 
 
 class CommunicationResponseDTO(BaseModel):

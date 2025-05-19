@@ -52,3 +52,15 @@ check_untyped_defs = true
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
+markers = [
+    "integration: marks tests as integration tests (real dependencies, slower)"
+]
+
+[tool.pytest.ini_options.coverage.run]
+omit = [
+    "*/interfaces/*",
+    "src/audhd_lifecoach/core/interfaces/*",
+    "*/*entrypoint*.py",
+    "*/__init__.py",
+    "*/tests/*"
+]

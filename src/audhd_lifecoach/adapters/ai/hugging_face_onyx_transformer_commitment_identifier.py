@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import logging
 
 # Direct imports instead of conditional or lazy loading
-from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
+from transformers.pipelines import pipeline
 import dateparser
 
 from audhd_lifecoach.core.domain.entities.communication import Communication
