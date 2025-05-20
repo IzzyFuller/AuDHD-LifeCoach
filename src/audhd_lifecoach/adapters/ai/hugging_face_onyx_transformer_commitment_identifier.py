@@ -11,6 +11,8 @@ import logging
 
 # Direct imports instead of conditional or lazy loading
 from transformers.pipelines import pipeline
+from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers.models.auto.modeling_auto import AutoModelForTokenClassification
 import dateparser
 
 from audhd_lifecoach.core.domain.entities.communication import Communication
@@ -50,7 +52,7 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
     and locations from text, enabling accurate identification of commitments.
     """
     
-    def __init__(self, model_name: str = "dslim/bert-base-NER", ner_pipeline=None):
+    def __init__(self, model_name: str = "dslim/bert-large-NER", ner_pipeline=None):
         """
         Initialize the commitment identifier with transformer model.
         
@@ -66,86 +68,48 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
     def ner_pipeline(self):
         """Lazy loading of the NER pipeline."""
         if self._ner_pipeline is None:
-            self._ner_pipeline = pipeline("ner", model=self.model_name)
+            tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            model = AutoModelForTokenClassification.from_pretrained(self.model_name)
+            self._ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
             logger.info(f"Loaded NER model: {self.model_name}")
         return self._ner_pipeline
     
-    def _extract_time_from_entity(self, entity_text: str) -> Optional[tuple]:
-        """Extract hour and minute from a time entity string."""
-        # Try to extract time format like "15:30" or "3:30"
-        time_match = re.search(r'([0-1]?[0-9]|2[0-3]):([0-5][0-9])', entity_text)
-        if time_match:
-            return int(time_match.group(1)), int(time_match.group(2))
-        return None
-    
     def _extract_time_entities(self, text: str) -> List[Dict[str, Any]]:
         """
-        Extract time entities from text using dateparser and pattern matching.
-        
-        Args:
-            text: The input text to extract time entities from
-            
-        Returns:
-            List of dictionaries containing time entity information
+        Extract time entities from text using the NER pipeline and fallback regex.
         """
         time_entities = []
-        
-        # Use regex patterns to find potential time expressions
+
+        # Use the NER pipeline to extract entities
+        ner_results = self.ner_pipeline(text)
         potential_times = []
-        for pattern in TIME_PATTERNS:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                potential_times.append((match.group(0), match.start(), match.end()))
-        
-        # Process each potential time expression
-        for time_expr, start, end in potential_times:
-            # Try to parse the time expression
+        for entity in ner_results:
+            if entity['entity'] in ('DATE', 'TIME'):
+                potential_times.append((entity['word'], entity['start'], entity['end']))
+
+        # Combine related entities based on their positions
+        combined_times = []
+        current_entity = None
+        for word, start, end in potential_times:
+            if current_entity is None:
+                current_entity = [word, start, end]
+            else:
+                # Check if the current entity is adjacent to the previous one
+                if start <= current_entity[2] + 1:  # Allow for small gaps
+                    current_entity[0] += f" {word}"  # Combine words
+                    current_entity[2] = end  # Update end position
+                else:
+                    combined_times.append(tuple(current_entity))
+                    current_entity = [word, start, end]
+        if current_entity:
+            combined_times.append(tuple(current_entity))
+
+        # Parse combined entities into datetime objects
+        for time_expr, start, end in combined_times:
             parsed_date = dateparser.parse(time_expr, settings={
                 'PREFER_DATES_FROM': 'future',
                 'RELATIVE_BASE': datetime.now()
             })
-            
-            # Handle time-of-day references (morning, afternoon, evening)
-            if not parsed_date:
-                # Check for time of day references
-                for time_name, (hour, minute) in TIME_OF_DAY.items():
-                    if time_name in time_expr.lower():
-                        # First try to parse the whole expression without the time reference
-                        base_expr = time_expr.lower().replace(time_name, "").strip()
-                        if base_expr:
-                            # Parse the base expression (e.g., "tomorrow" from "tomorrow morning")
-                            base_date = dateparser.parse(base_expr, settings={
-                                'PREFER_DATES_FROM': 'future',
-                                'RELATIVE_BASE': datetime.now()
-                            })
-                            if base_date:
-                                # Set the time portion using our time of day mapping
-                                parsed_date = base_date.replace(hour=hour, minute=minute)
-                                break
-                        else:
-                            # If just "morning", "afternoon", etc., use today's date
-                            today = datetime.now().replace(hour=hour, minute=minute)
-                            # If the time has already passed today, move to tomorrow
-                            if today < datetime.now():
-                                today = today + timedelta(days=1)
-                            parsed_date = today
-                            break
-                            
-                # Handle day of week without specific time
-                if not parsed_date and any(day in time_expr.lower() for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
-                    parsed_date = dateparser.parse(time_expr, settings={
-                        'PREFER_DATES_FROM': 'future',
-                        'RELATIVE_BASE': datetime.now()
-                    })
-                    
-                    # Set a default time if only a day was specified (e.g., "Friday")
-                    if parsed_date:
-                        # Default to 9 AM for workdays, 10 AM for weekends
-                        if parsed_date.weekday() < 5:  # Monday-Friday
-                            parsed_date = parsed_date.replace(hour=9, minute=0)
-                        else:  # Saturday, Sunday
-                            parsed_date = parsed_date.replace(hour=10, minute=0)
-            
             if parsed_date:
                 time_entity = {
                     'entity': 'TIME',
@@ -153,39 +117,10 @@ class HuggingFaceONYXTransformerCommitmentIdentifier:
                     'start': start,
                     'end': end,
                     'parsed_datetime': parsed_date,
-                    'score': 1.0  # Confidence score for rule-based extraction
+                    'score': 1.0  # Confidence score
                 }
                 time_entities.append(time_entity)
-        
-        # Special case: if we have "this evening", "tomorrow morning", etc. but didn't match
-        # Try to find these common time phrases directly
-        if not time_entities:
-            time_phrases = ["morning", "afternoon", "evening", "night", "tomorrow", "friday", "monday", "tuesday", "wednesday", "thursday"]
-            for phrase in time_phrases:
-                if phrase in text.lower():
-                    # Parse the phrase
-                    parsed_date = dateparser.parse(phrase, settings={
-                        'PREFER_DATES_FROM': 'future',
-                        'RELATIVE_BASE': datetime.now()
-                    })
-                    
-                    if parsed_date:
-                        # If it's a time of day reference, set appropriate hour
-                        if phrase in TIME_OF_DAY:
-                            hour, minute = TIME_OF_DAY[phrase]
-                            parsed_date = parsed_date.replace(hour=hour, minute=minute)
-                        
-                        time_entity = {
-                            'entity': 'TIME',
-                            'word': phrase,
-                            'start': text.lower().find(phrase),
-                            'end': text.lower().find(phrase) + len(phrase),
-                            'parsed_datetime': parsed_date,
-                            'score': 0.9  # Slightly lower confidence for this fallback
-                        }
-                        time_entities.append(time_entity)
-                        break
-        
+
         return time_entities
     
     def _extract_person_entities(self, text: str, standard_entities: List[Dict[str, Any]]) -> Optional[str]:
