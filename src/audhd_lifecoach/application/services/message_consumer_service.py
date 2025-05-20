@@ -4,6 +4,7 @@ Message Consumer Service.
 This service is responsible for consuming messages from a message queue
 and processing them to extract commitments and create reminders.
 """
+import datetime
 import logging
 from typing import Any, Dict, Optional
 
@@ -74,9 +75,10 @@ class MessageConsumerService:
         communication_dto = CommunicationRequestDTO(
             content=message_data["content"],
             sender=message_data["sender"],
-            recipient=message_data["recipient"],
-            timestamp=message_data.get("timestamp")
+            recipient=message_data["recipient"]
         )
+        if "timestamp" in message_data:
+            communication_dto.timestamp = datetime.datetime.fromisoformat(message_data["timestamp"])
         
         # Process the communication using the use case
         response_dto = self.process_communication_use_case.execute(communication_dto)
