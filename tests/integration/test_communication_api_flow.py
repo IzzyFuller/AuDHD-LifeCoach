@@ -15,9 +15,9 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
 from audhd_lifecoach.adapters.api.communication_controller import CommunicationController
-from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationResponseDTO
@@ -40,7 +40,7 @@ class TestCommunicationAPIFlow:
         mock_publisher.publish_message.return_value = True
         
         # Use the actual transformer pipeline
-        identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+        identifier = SpaCyCommitmentIdentifier()
         processor = CommunicationProcessor(identifier)
         
         # Create the use case with the mock publisher

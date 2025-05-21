@@ -5,6 +5,7 @@ This file orchestrates the setup of the application using clean architecture pri
 import os
 from typing import Dict, Any
 
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
 from audhd_lifecoach.adapters.api.communication_controller import CommunicationController
 from audhd_lifecoach.adapters.api.health_controller import HealthController
@@ -13,7 +14,6 @@ from audhd_lifecoach.application.dtos.communication_dto import CommunicationResp
 from audhd_lifecoach.application.dtos.health_dto import HealthCheckResponseDTO
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
-from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_publisher import RabbitMQMessagePublisher
 
 
@@ -47,7 +47,7 @@ def create_app() -> WebAppInterface:
     message_publisher.connect()
     
     # Initialize dependencies for communication processing
-    identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+    identifier = SpaCyCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
     
     # Initialize the use case with the message publisher

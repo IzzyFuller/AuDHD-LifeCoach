@@ -190,13 +190,6 @@ class SpaCyCommitmentIdentifier:
                 # Find the verb (head of "I")
                 verb = token.head
                 
-                # Skip auxiliary verbs to find the main verb
-                if verb.pos_ == "AUX" and any(child.pos_ == "VERB" for child in verb.children):
-                    for child in verb.children:
-                        if child.pos_ == "VERB":
-                            verb = child
-                            break
-                
                 # Collect the verb phrase
                 action_parts = []
                 

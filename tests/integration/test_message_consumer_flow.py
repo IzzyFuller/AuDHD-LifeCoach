@@ -12,16 +12,12 @@ import pytest
 import json
 import time
 from datetime import datetime
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-import pika
 
-from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO
-from audhd_lifecoach.core.domain.entities.communication import Communication
-from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitMQMessageConsumer
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
-from audhd_lifecoach.application.interfaces.message_consumer_interface import MessageConsumerInterface
 from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 
@@ -80,7 +76,7 @@ class TestMessageConsumerFlow:
         Create an actual MessageConsumerService with the real RabbitMQMessageConsumer.
         """
         # Create the commitment identifier
-        commitment_identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+        commitment_identifier = SpaCyCommitmentIdentifier()
         
         # Create the communication processor
         communication_processor = CommunicationProcessor(commitment_identifier)

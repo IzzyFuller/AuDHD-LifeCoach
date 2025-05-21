@@ -6,11 +6,11 @@ import logging
 import os
 from typing import Dict, Any
 
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitMQMessageConsumer
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_publisher import RabbitMQMessagePublisher
 from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
-from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 
 # Configure logging
@@ -50,7 +50,7 @@ def create_message_consumer(queue_name: str = "communications") -> MessageConsum
     message_publisher.connect()
     
     # Initialize dependencies for commitment processing
-    identifier = HuggingFaceONYXTransformerCommitmentIdentifier()
+    identifier = SpaCyCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
     
     # Create the process communication use case with message publisher
