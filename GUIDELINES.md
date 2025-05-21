@@ -16,7 +16,7 @@
 ### Test-Driven Development (TDD)
 1. **Write a failing test first** that describes the desired behavior
 2. **Write minimal implementation code** to make the test pass
-3. **Refactor** code while maintaining test coverage
+3. **Refactor** code while maintaining test coverage: evaluate the code base after all tests begin passing for any opportunity to improve quality, readability, extensibility, security, etc. without overcomplexifying anything. During refactor no changes will be made to tests. if a test breaks because of a refactor that does not change the external behavior of the code under test, that test needs to be re-evaluated to make sure it does not know too much about the code it is testing.
 4. Always run the tests before committing code changes to ensure everything still passes
 
 ### Clean Architecture Principles

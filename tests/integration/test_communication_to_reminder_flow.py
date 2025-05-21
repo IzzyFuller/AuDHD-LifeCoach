@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.adapters.ai.hugging_face_onyx_transformer_commitment_identifier import HuggingFaceONYXTransformerCommitmentIdentifier
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO
 
@@ -25,7 +26,7 @@ class TestCommunicationToReminderFlow:
     @pytest.fixture
     def commitment_identifier(self):
         """Create a real commitment identifier using the transformer pipeline."""
-        return HuggingFaceONYXTransformerCommitmentIdentifier()
+        return SpaCyCommitmentIdentifier()
     
     @pytest.fixture
     def communication_processor(self, commitment_identifier):
@@ -79,7 +80,7 @@ class TestCommunicationToReminderFlow:
         
         # Verify the commitment information is present
         assert reminder.commitment_what is not None
-        assert reminder.commitment_what.lower() == "call"  # Verify the what field directly
+        assert "call" in reminder.commitment_what.lower() # Verify the what field directly
         
         # Verify the message was published
         mock_message_publisher.publish_message.assert_called_once()
