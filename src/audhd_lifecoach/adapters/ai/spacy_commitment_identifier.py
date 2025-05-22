@@ -86,7 +86,7 @@ class SpaCyCommitmentIdentifier:
                 # Extract commitment details from the segment
                 what = self._extract_what(segment_doc)
                 where = self._extract_where(segment_doc)
-                time_info = self._extract_time_info(segment_doc.text, communication.timestamp)
+                time_info = self._extract_time_info(segment_doc, communication.timestamp)
                 
                 # Create commitment if we have the necessary information
                 if what and time_info:
@@ -247,7 +247,7 @@ class SpaCyCommitmentIdentifier:
         
         return None
     
-    def _extract_time_info(self, text: str, reference_time: datetime) -> Tuple[datetime, datetime]|None:
+    def _extract_time_info(self, segment: Doc, reference_time: datetime) -> Tuple[datetime, datetime]|None:
         """
         Extract time information from the text.
         
@@ -259,125 +259,56 @@ class SpaCyCommitmentIdentifier:
             A tuple of (start_time, end_time) if found, None otherwise
         """
         # Extract date and time
-        extracted_date = self._extract_date(text, reference_time)
-        extracted_time = self._extract_time(text)
+        extracted_date = self._extract_date(segment, reference_time)
+        extracted_time = self._extract_time(segment.text)
         
         # Set defaults if not found
         if extracted_date is None:
             extracted_date = reference_time.date()
         
         if extracted_time is None:
-            # Default to 9 AM for morning, 2 PM for afternoon
-            if "afternoon" in text.lower() or "evening" in text.lower():
-                extracted_time = time(14, 0)  # 2 PM
-            else:
-                extracted_time = time(9, 0)   # 9 AM
-        
-        # Combine date and time
-        start_time = datetime.combine(extracted_date, extracted_time)
-        
-        # Extract duration
-        duration = self._extract_duration(text)
+            # return 00:00 through 23:59
+            extracted_time = time(0, 0)
+            duration = timedelta(hours=23, minutes=59)
+        else:
+            # Extract duration
+            duration = self._extract_duration(segment.text) 
         
         # Default duration is 1 hour if not specified
         if duration is None:
             duration = timedelta(hours=1)
+        
+        # Combine date and time
+        start_time = datetime.combine(extracted_date, extracted_time)
         
         # Calculate end time
         end_time = start_time + duration
         
         return start_time, end_time
     
-    def _extract_date(self, text: str, reference_time: datetime) -> date|None:
+    def _extract_date(self, doc: Doc, reference_time: datetime) -> date | None:
         """
-        Extract the date from the text.
-        
+        Extract the date from the text using SpaCy's NLP capabilities.
+
         Args:
-            text: The text to analyze
+            doc: The SpaCy Doc object to analyze
             reference_time: The reference time
-            
+
         Returns:
-            The extracted date, or None if no date found
+            The extracted date, or None if no date is found
         """
-        # Check for relative dates (today, tomorrow, etc.)
-        relative_date_pattern = r"\b(today|tomorrow|tonight|the day after tomorrow)\b"
-        relative_match = re.search(relative_date_pattern, text, re.IGNORECASE)
-        
-        if relative_match:
-            term = relative_match.group(1).lower()
-            if term == 'tomorrow':
-                return reference_time.date() + timedelta(days=1)
-            elif term == 'the day after tomorrow':
-                return reference_time.date() + timedelta(days=2)
-            else:  # today or tonight
-                return reference_time.date()
-        
-        # Check for days of the week (this Monday, next Friday, etc.)
-        day_pattern = r"\b(?:this|next)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|weekend)\b"
-        day_match = re.search(day_pattern, text, re.IGNORECASE)
-        
-        if day_match:
-            if len(day_match.groups()) == 2:
-                qualifier = day_match.group(1).lower()
-                day_term = day_match.group(2).lower()
-            else:
-                qualifier = 'this' 
-                day_term = day_match.group(1).lower()
-            
-            # Convert short day names to full names
-            if day_term in self.day_map:
-                day_term = self.day_map[day_term]
-            
-            if day_term == 'weekend':
-                day_term = 'saturday'  # Assume weekend means Saturday
-            
-            # Get the day number (0=Monday, 6=Sunday)
-            day_num = list(calendar.day_name).index(day_term.capitalize())
-            
-            # Calculate days until that day
-            current_day = reference_time.weekday()
-            days_to_add = (day_num - current_day) % 7
-            
-            if qualifier == 'next' or (qualifier == 'next' and days_to_add == 0):
-                days_to_add += 7
-            
-            return (reference_time.date() + timedelta(days=days_to_add))
-        
-        # Check for absolute dates (MM/DD/YYYY)
-        date_pattern = r"\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b"
-        date_match = re.search(date_pattern, text)
-        
-        if date_match:
-            month = int(date_match.group(1))
-            day = int(date_match.group(2))
-            year = int(date_match.group(3)) if date_match.group(3) else reference_time.year
-            
-            # Handle 2-digit years
-            if year < 100:
-                year += 2000
-            
-            # Basic validation
-            if 1 <= month <= 12 and 1 <= day <= 31:
-                try:
-                    return datetime(year, month, day).date()
-                except ValueError:
-                    pass  # Invalid date like February 30
-        
-        # Check for month name dates (May 21, May 21 2025)
-        month_pattern = r"\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[.\s]+(\d{1,2})(?:st|nd|rd|th)?(?:[,\s]+(\d{4}))?\b"
-        month_match = re.search(month_pattern, text, re.IGNORECASE)
-        
-        if month_match:
-            month_name = month_match.group(1).lower()
-            day = int(month_match.group(2))
-            year = int(month_match.group(3)) if month_match.group(3) else reference_time.year
-            
-            if month_name in self.month_names and 1 <= day <= 31:
-                try:
-                    return datetime(year, self.month_names[month_name], day).date()
-                except ValueError:
-                    pass  # Invalid date
-        
+        # Look for DATE entities in the text
+        for entity in doc.ents:
+            if entity.label_ == "DATE":
+                # Use dateparser to parse the date relative to the reference time
+                parsed_date = dateparser.parse(entity.text, settings={
+                    'PREFER_DATES_FROM': 'future',
+                    'RELATIVE_BASE': reference_time
+                })
+                if parsed_date:
+                    return parsed_date.date()
+
+        # If no DATE entity is found, return None
         return None
     
     def _extract_time(self, text: str) -> time|None:
