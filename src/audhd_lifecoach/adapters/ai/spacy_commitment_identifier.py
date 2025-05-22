@@ -33,13 +33,6 @@ class SpaCyCommitmentIdentifier:
         """Initialize the CommitmentIdentifier with the spaCy NLP model."""
         self.nlp = spacy.load("en_core_web_trf")
         
-        # Common commitment indicator phrases and patterns
-        self.commitment_indicators = [
-            "I will", "I'll", "I'm going to", "I am going to", "I can", 
-            "I promise to", "I commit to", "I agree to", "I plan to",
-            "let me", "I intend to", "I shall"
-        ]
-        
         # Month names to numbers mapping
         self.month_names = {
             'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
@@ -92,8 +85,8 @@ class SpaCyCommitmentIdentifier:
                 
                 # Extract commitment details from the segment
                 what = self._extract_what(segment_doc)
-                where = self._extract_where(segment)
-                time_info = self._extract_time_info(sentence.text, communication.timestamp)
+                where = self._extract_where(segment_doc)
+                time_info = self._extract_time_info(segment_doc.text, communication.timestamp)
                 
                 # Create commitment if we have the necessary information
                 if what and time_info:
@@ -131,7 +124,7 @@ class SpaCyCommitmentIdentifier:
         first_person_indicators = ["I will", "I'll", "I'm going", "I am going", "I can", 
                             "I promise", "I commit", "I agree", "I plan", "I intend", "I shall"]
         
-        we_indicators = ["we can", "we will", "we'll", "we're going", "we are going"]
+        we_indicators = ["we can", "we will", "we'll", "we're going", "we are going", "let's"]
         
         # Check if any indicators are present
         has_first_person = any(ind.lower() in text.lower() for ind in first_person_indicators)
@@ -173,7 +166,7 @@ class SpaCyCommitmentIdentifier:
         # If no segments found, return the original text
         return segments if segments else [text]
     
-    def _extract_what(self, doc) -> str|None:
+    def _extract_what(self, doc: Doc) -> str|None:
         """
         Extract the action or task (what) from the sentence.
         
@@ -186,7 +179,7 @@ class SpaCyCommitmentIdentifier:
         
         # Use dependency parsing to find the main verb and its complements
         for token in doc:
-            if (token.text.lower() == "i" or token.text.lower() == "we") and token.dep_ == "nsubj":
+            if (token.text.lower() in ("i", "we", "'s")) and token.dep_ == "nsubj":
                 # Find the verb (head of "I")
                 verb = token.head
                 
@@ -208,7 +201,7 @@ class SpaCyCommitmentIdentifier:
                     return " ".join(action_parts)
         return
     
-    def _extract_where(self, text: str) -> str|None:
+    def _extract_where(self, doc: Doc) -> str|None:
         """
         Extract the location (where) from the text.
         
@@ -218,8 +211,6 @@ class SpaCyCommitmentIdentifier:
         Returns:
             The extracted location, or None if no location found
         """
-        # Process the text with spaCy
-        doc = self.nlp(text)
         
         # Look for location entities
         for entity in doc.ents:
@@ -236,7 +227,7 @@ class SpaCyCommitmentIdentifier:
         ]
         
         for pattern in location_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
+            match = re.search(pattern, doc.text, re.IGNORECASE)
             if match:
                 location = match.group(1).strip()
                 
@@ -322,12 +313,16 @@ class SpaCyCommitmentIdentifier:
                 return reference_time.date()
         
         # Check for days of the week (this Monday, next Friday, etc.)
-        day_pattern = r"\b(this|next)\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun|weekend)\b"
+        day_pattern = r"\b(?:this|next)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|weekend)\b"
         day_match = re.search(day_pattern, text, re.IGNORECASE)
         
         if day_match:
-            qualifier = day_match.group(1).lower()
-            day_term = day_match.group(2).lower()
+            if len(day_match.groups()) == 2:
+                qualifier = day_match.group(1).lower()
+                day_term = day_match.group(2).lower()
+            else:
+                qualifier = 'this' 
+                day_term = day_match.group(1).lower()
             
             # Convert short day names to full names
             if day_term in self.day_map:

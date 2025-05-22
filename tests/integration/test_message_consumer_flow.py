@@ -10,7 +10,6 @@ This test uses the actual transformer pipeline rather than mocks.
 """
 import pytest
 import json
-import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 

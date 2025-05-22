@@ -9,7 +9,7 @@ This test verifies the core domain flow:
 This test uses the actual transformer pipeline rather than mocks.
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 from audhd_lifecoach.core.domain.entities.communication import Communication
@@ -51,20 +51,35 @@ class TestCommunicationToReminderFlow:
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
-        "content, expected_reminders, expected_what",
+        "content, expected_reminders, expected_what, expected_times",
         [
             # Test case: No commitments
-            ("The weather is nice today", 0, []),
+            ("The weather is nice today", 0, [], []),
 
             # Test case: Single commitment
-            ("I'll call you tomorrow at 3:30 PM. Bob and Doug are coming too.", 1, ["call"]),
+            ("I'll call you tomorrow at 3:30 PM. Bob and Doug are coming too.", 1, ["call"], [
+                (datetime.now() + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0)
+            ]),
 
             # Test case: Multiple commitments
-            ("I'll call you tomorrow at 3:30 PM and we will meet on Friday at 10:00 AM.", 2, ["call", "meet"]),
+            ("I'll call you tomorrow at 3:30 PM and we will meet on Friday at 10:00 AM.", 2, ["call", "meet"], [
+                (datetime.now() + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0),
+                (datetime.now() + timedelta(days=1)).replace(hour=9, minute=30, second=0, microsecond=0)
+            ]),
+
+            # Test case: Explicit Location
+            ("Let's have lunch at the Cafe tomorrow around noon", 1, ["lunch"], [
+                (datetime.now() + timedelta(days=1)).replace(hour=11, minute=30, second=0, microsecond=0)
+            ]),
+
+            # Test case: Explicit afternoon default time
+            ("We could have brunch at Grey Jay tomorrow afternoon", 1, ["brunch"], [
+                (datetime.now() + timedelta(days=1)).replace(hour=13, minute=30, second=0, microsecond=0)
+            ]),
         ],
     )
     def test_process_communication(
-        self, process_communication_use_case, mock_message_publisher, content, expected_reminders, expected_what
+        self, process_communication_use_case, mock_message_publisher, content, expected_reminders, expected_what, expected_times
     ):
         """Test processing a communication with varying commitments."""
         # Arrange
@@ -89,6 +104,10 @@ class TestCommunicationToReminderFlow:
         for i, reminder in enumerate(response.reminders):
             assert expected_what[i] in reminder.commitment_what.lower(), f"Expected '{expected_what[i]}' in reminder's what field"
             assert reminder.when > datetime.now(), "The reminder's time should be in the future"
+
+            # Verify the time matches the expected time
+            expected_time = expected_times[i]
+            assert reminder.when == expected_time, f"Expected time '{expected_time}' but got '{reminder.when}'"
 
         # Verify the message was published
         mock_message_publisher.publish_message.assert_called_once()
