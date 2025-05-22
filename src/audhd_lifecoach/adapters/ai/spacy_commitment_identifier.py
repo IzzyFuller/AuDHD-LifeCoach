@@ -247,43 +247,43 @@ class SpaCyCommitmentIdentifier:
         
         return None
     
-    def _extract_time_info(self, segment: Doc, reference_time: datetime) -> Tuple[datetime, datetime]|None:
+    def _extract_time_info(self, segment: Doc, reference_time: datetime) -> Tuple[datetime, datetime] | None:
         """
         Extract time information from the text.
-        
+
         Args:
-            text: The text to analyze
+            segment: The SpaCy Doc object to analyze
             reference_time: The reference time (usually the communication timestamp)
-            
+
         Returns:
             A tuple of (start_time, end_time) if found, None otherwise
         """
         # Extract date and time
         extracted_date = self._extract_date(segment, reference_time)
         extracted_time = self._extract_time(segment.text)
-        
+
         # Set defaults if not found
         if extracted_date is None:
             extracted_date = reference_time.date()
-        
+
         if extracted_time is None:
-            # return 00:00 through 23:59
+            # Default to 00:00 through 23:59 if no time is found
             extracted_time = time(0, 0)
             duration = timedelta(hours=23, minutes=59)
         else:
             # Extract duration
-            duration = self._extract_duration(segment.text) 
-        
+            duration = self._extract_duration(segment.text)
+
         # Default duration is 1 hour if not specified
         if duration is None:
             duration = timedelta(hours=1)
-        
+
         # Combine date and time
         start_time = datetime.combine(extracted_date, extracted_time)
-        
+
         # Calculate end time
         end_time = start_time + duration
-        
+
         return start_time, end_time
     
     def _extract_date(self, doc: Doc, reference_time: datetime) -> date | None:
