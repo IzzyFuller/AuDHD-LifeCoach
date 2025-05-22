@@ -258,106 +258,26 @@ class SpaCyCommitmentIdentifier:
         Returns:
             A tuple of (start_time, end_time) if found, None otherwise
         """
-        # Extract date and time
-        extracted_date = self._extract_date(segment, reference_time)
-        extracted_time = self._extract_time(segment.text)
+        # Extract the full timestamp
+        extracted_datetime = self._extract_date_time(segment, reference_time)
 
-        # Set defaults if not found
-        if extracted_date is None:
-            extracted_date = reference_time.date()
-
-        if extracted_time is None:
-            # Default to 00:00 through 23:59 if no time is found
-            extracted_time = time(0, 0)
+        # Set defaults if no timestamp is found
+        if extracted_datetime is None:
+            start_time = datetime.combine(reference_time.date(), time(0, 0))
             duration = timedelta(hours=23, minutes=59)
         else:
-            # Extract duration
+            start_time = extracted_datetime
+            # Extract duration if specified
             duration = self._extract_duration(segment.text)
 
         # Default duration is 1 hour if not specified
         if duration is None:
             duration = timedelta(hours=1)
 
-        # Combine date and time
-        start_time = datetime.combine(extracted_date, extracted_time)
-
         # Calculate end time
         end_time = start_time + duration
 
         return start_time, end_time
-    
-    def _extract_date(self, doc: Doc, reference_time: datetime) -> date | None:
-        """
-        Extract the date from the text using SpaCy's NLP capabilities.
-
-        Args:
-            doc: The SpaCy Doc object to analyze
-            reference_time: The reference time
-
-        Returns:
-            The extracted date, or None if no date is found
-        """
-        # Look for DATE entities in the text
-        for entity in doc.ents:
-            if entity.label_ == "DATE":
-                # Use dateparser to parse the date relative to the reference time
-                parsed_date = dateparser.parse(entity.text, settings={
-                    'PREFER_DATES_FROM': 'future',
-                    'RELATIVE_BASE': reference_time
-                })
-                if parsed_date:
-                    return parsed_date.date()
-
-        # If no DATE entity is found, return None
-        return None
-    
-    def _extract_time(self, text: str) -> time|None:
-        """
-        Extract the time from the text.
-        
-        Args:
-            text: The text to analyze
-            
-        Returns:
-            The extracted time, or None if no time found
-        """
-        # Check for specific times (3:30pm, 3pm, etc.)
-        time_pattern = r"(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm|AM|PM))"
-        time_match = re.search(time_pattern, text)
-        
-        if time_match:
-            hour = int(time_match.group(1))
-            minute = int(time_match.group(2)) if time_match.group(2) else 0
-            am_pm = time_match.group(3).lower()
-            
-            # Convert to 24-hour format
-            if am_pm == 'pm' and hour < 12:
-                hour += 12
-            elif am_pm == 'am' and hour == 12:
-                hour = 0
-            
-            return time(hour, minute)
-        
-        # Check for named times (morning, afternoon, etc.)
-        named_time_pattern = r"\b(morning|afternoon|evening|night|noon|midnight)\b"
-        named_match = re.search(named_time_pattern, text, re.IGNORECASE)
-        
-        if named_match:
-            time_name = named_match.group(1).lower()
-            if time_name == 'morning':
-                return time(9, 0)
-            elif time_name == 'afternoon':
-                return time(14, 0)
-            elif time_name == 'evening':
-                return time(18, 0)
-            elif time_name == 'night':
-                return time(20, 0)
-            elif time_name == 'noon':
-                return time(12, 0)
-            elif time_name == 'midnight':
-                return time(0, 0)
-        
-        return None
     
     def _extract_duration(self, text: str) -> timedelta|None:
         """
@@ -383,4 +303,31 @@ class SpaCyCommitmentIdentifier:
                 elif unit == "day":
                     return timedelta(days=amount)
         
+        return None
+    
+    def _extract_date_time(self, doc: Doc, reference_time: datetime) -> datetime | None:
+        """
+        Extract the full timestamp (date and time) from the text using SpaCy's NLP capabilities and dateparser.
+
+        Args:
+            doc: The SpaCy Doc object to analyze
+            reference_time: The reference time
+
+        Returns:
+            The extracted datetime, or None if no date or time is found
+        """
+        for token in doc:
+            # Check if the token is part of a DATE or TIME entity
+            if token.ent_type_ in ["DATE", "TIME"]:
+                # Expand to the syntactic subtree to capture related tokens
+                related_span = doc[token.left_edge.i : token.right_edge.i + 1]
+                # Parse the combined span using dateparser
+                parsed_datetime = dateparser.parse(related_span.text, settings={
+                    'PREFER_DATES_FROM': 'future',
+                    'RELATIVE_BASE': reference_time
+                })
+                if parsed_datetime:
+                    return parsed_datetime
+
+        # If no related span is found, return None
         return None
