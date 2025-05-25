@@ -9,8 +9,8 @@ This test verifies the core domain flow:
 This test uses the actual transformer pipeline rather than mocks.
 """
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
@@ -21,6 +21,11 @@ from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequ
 
 class TestCommunicationToReminderFlow:
     """Integration test for the communication to reminder flow."""
+
+    @pytest.fixture
+    def fixed_now(self):
+        """Provide a fixed timezone-aware datetime for testing."""
+        return datetime(2025, 5, 21, 12, 0, 0, tzinfo=timezone.utc)  # Fixed datetime with UTC timezone
 
     @pytest.fixture
     def commitment_identifier(self):
@@ -58,36 +63,40 @@ class TestCommunicationToReminderFlow:
 
             # Test case: Single commitment
             ("I'll call you tomorrow at 3:30 PM. Bob and Doug are coming too.", 1, ["call"], [
-                (datetime.now() + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0)
+                datetime(2025, 5, 22, 15, 00, 0, tzinfo=timezone.utc)
             ]),
 
             # Test case: Multiple commitments
             ("I'll call you tomorrow at 3:30 PM and we will meet on Friday at 10:00 AM.", 2, ["call", "meet"], [
-                (datetime.now() + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0),
-                (datetime.now() + timedelta(days=1)).replace(hour=9, minute=30, second=0, microsecond=0)
+                datetime(2025, 5, 22, 15, 00, 0, tzinfo=timezone.utc),
+                datetime(2025, 5, 23, 9, 30, 0, tzinfo=timezone.utc)
             ]),
 
             # Test case: Explicit Location
             ("Let's have lunch at the Cafe tomorrow around noon", 1, ["lunch"], [
-                (datetime.now() + timedelta(days=1)).replace(hour=11, minute=30, second=0, microsecond=0)
+                datetime(2025, 5, 22, 11, 30, 0, tzinfo=timezone.utc)
             ]),
 
             # Test case: Explicit afternoon default time
             ("We could have brunch at Grey Jay tomorrow afternoon", 1, ["brunch"], [
-                (datetime.now() + timedelta(days=1)).replace(hour=13, minute=30, second=0, microsecond=0)
+                datetime(2025, 5, 22, 13, 30, 0, tzinfo=timezone.utc)
             ]),
         ],
     )
+    @patch("datetime.datetime")
     def test_process_communication(
-        self, process_communication_use_case, mock_message_publisher, content, expected_reminders, expected_what, expected_times
+        self, mock_datetime, process_communication_use_case, mock_message_publisher, content, expected_reminders, expected_what, expected_times, fixed_now
     ):
         """Test processing a communication with varying commitments."""
         # Arrange
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
         communication_dto = CommunicationRequestDTO(
             content=content,
             sender="Alice",
             recipient="Bob",
-            timestamp=datetime.now()
+            timestamp=fixed_now
         )
 
         # Act
@@ -103,11 +112,16 @@ class TestCommunicationToReminderFlow:
         # Verify the details of each reminder
         for i, reminder in enumerate(response.reminders):
             assert expected_what[i] in reminder.commitment_what.lower(), f"Expected '{expected_what[i]}' in reminder's what field"
-            assert reminder.when > datetime.now(), "The reminder's time should be in the future"
+
+            # Ensure `reminder.when` is offset-aware
+            reminder_time = reminder.when.replace(tzinfo=timezone.utc)
+
+            # Verify the reminder's time is in the future
+            assert reminder_time > fixed_now, "The reminder's time should be in the future"
 
             # Verify the time matches the expected time
             expected_time = expected_times[i]
-            assert reminder.when == expected_time, f"Expected time '{expected_time}' but got '{reminder.when}'"
+            assert reminder_time == expected_time, f"Expected time '{expected_time}' but got '{reminder_time}'"
 
         # Verify the message was published
         mock_message_publisher.publish_message.assert_called_once()

@@ -140,16 +140,17 @@ class SpaCyCommitmentIdentifier:
                 if match:
                     # Split the text at the conjunction
                     split_idx = match.start()
+                    conjunction_length = len(match.group(1).split()[0])  # Length of the conjunction (e.g., "and")
                     first_part = text[:split_idx].strip()
-                    second_part = text[split_idx:].strip()
-                    
+                    second_part = text[split_idx + conjunction_length:].strip()  # Exclude the conjunction itself
+
                     # Add both parts if they contain commitment indicators
                     if any(ind.lower() in first_part.lower() for ind in first_person_indicators):
                         segments.append(first_part)
-                    
+
                     if second_part:
                         segments.append(second_part)
-                    
+
                     if segments:
                         return segments
         
@@ -316,18 +317,73 @@ class SpaCyCommitmentIdentifier:
         Returns:
             The extracted datetime, or None if no date or time is found
         """
+        # Find the root verb of the sentence
+        root_verb = None
         for token in doc:
-            # Check if the token is part of a DATE or TIME entity
-            if token.ent_type_ in ["DATE", "TIME"]:
-                # Expand to the syntactic subtree to capture related tokens
-                related_span = doc[token.left_edge.i : token.right_edge.i + 1]
-                # Parse the combined span using dateparser
-                parsed_datetime = dateparser.parse(related_span.text, settings={
-                    'PREFER_DATES_FROM': 'future',
-                    'RELATIVE_BASE': reference_time
-                })
-                if parsed_datetime:
-                    return parsed_datetime
+            if token.dep_ == "ROOT":
+                root_verb = token
+                break
 
-        # If no related span is found, return None
+        if not root_verb:
+            return None  # No root verb found, cannot determine date and time
+
+        # Search the subtree of the root verb for DATE and TIME entities or relative time expressions
+        date_entity = None
+        time_entity = None
+        relative_time = None
+
+        for token in root_verb.subtree:
+            if token.ent_type_ == "DATE":
+                date_entity = token
+            elif token.ent_type_ == "TIME":
+                time_entity = token
+            elif token.text.lower() in ["noon", "afternoon", "morning", "evening", "night"]:
+                relative_time = token.text.lower()
+
+        # Handle relative time expressions
+        if relative_time:
+            if relative_time == "noon":
+                time_entity = "12:00"
+            elif relative_time == "afternoon":
+                time_entity = "14:00"  # Default to 2:00 PM for "afternoon"
+            elif relative_time == "morning":
+                time_entity = "09:00"  # Default to 9:00 AM for "morning"
+            elif relative_time == "evening":
+                time_entity = "18:00"  # Default to 6:00 PM for "evening"
+            elif relative_time == "night":
+                time_entity = "21:00"  # Default to 9:00 PM for "night"
+
+        # Combine DATE and TIME entities if both are found
+        if date_entity and time_entity:
+            # If time_entity is a string (e.g., "15:00"), combine it with the date_entity text
+            if isinstance(time_entity, str):
+                combined_text = f"{date_entity.text} {time_entity}"
+            else:
+                combined_text = doc[min(date_entity.i, time_entity.i):max(date_entity.i, time_entity.i) + 1].text
+
+            parsed_datetime = dateparser.parse(combined_text, settings={
+                'PREFER_DATES_FROM': 'future',
+                'RELATIVE_BASE': reference_time
+            })
+            if parsed_datetime:
+                return parsed_datetime
+
+        # If only one entity is found, parse it individually
+        if date_entity:
+            parsed_date = dateparser.parse(date_entity.text, settings={
+                'PREFER_DATES_FROM': 'future',
+                'RELATIVE_BASE': reference_time
+            })
+            if parsed_date:
+                return parsed_date
+
+        if time_entity and isinstance(time_entity, str):
+            # Parse the time_entity string directly
+            parsed_time = dateparser.parse(time_entity, settings={
+                'RELATIVE_BASE': reference_time
+            })
+            if parsed_time:
+                return parsed_time
+
+        # If no entities are found, return None
         return None
