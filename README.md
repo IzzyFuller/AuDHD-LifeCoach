@@ -1,4 +1,11 @@
 # AuDHD-LifeCoach
+
+[![CI/CD Pipeline](https://github.com/IzzyFuller/AuDHD-LifeCoach/actions/workflows/ci.yml/badge.svg)](https://github.com/IzzyFuller/AuDHD-LifeCoach/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/IzzyFuller/AuDHD-LifeCoach/branch/main/graph/badge.svg)](https://codecov.io/gh/IzzyFuller/AuDHD-LifeCoach)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 I was messaging with a friend the other day around 11:45 and I told them I would come over to their home at 15:30 and give them and their kid a ride to an event. They NEEDED to leave their house at between 15:30 and 16:00. My ADHD brain, however decided in that moment between sending that message and scheduleing my day from that point forward, to changed "arriving at their house at 15:30" to "leaving my house at 15:30" and thus I was very very late. I felt terrible, and while I strive to understand and accept my neurotype and how it is no worse or better than any other neurotype, this kind of Executive Function failure tweaks my internalized ableism badly. I wish I had supports to help with the social aspects of this social disability.
 
 I wish an AI ADHD assistant had been monitoring my messages and had added a reminder to my calendar, or enabled an alarm to tell me to leave at the right time. So I am going to build one! My overall idea is that there would be a process running on my phone that would be listening to what I say all the time and monitoring messages I send to other people and could infer things from this data to automatically add reminders to my calendar, alarms to my clock, and tasks to a ToDo list or other work management tool (think as simple as Keep to as sophisticated as Jira, eventually). 
@@ -181,11 +188,53 @@ The Docker configuration pre-downloads the necessary Hugging Face models during 
 
 ### Running Tests
 
+The project includes comprehensive test coverage with both unit and integration tests:
+
 ```bash
+# Run all tests
+pytest
+
+# Run only unit tests
 pytest tests/unit
+
+# Run only integration tests  
 pytest tests/integration
+
+# Run tests with coverage reporting
+pytest --cov=src/audhd_lifecoach --cov-report=term --cov-report=html
+
+# Generate coverage badge
+coverage-badge -o coverage.svg
+
+# Use convenient scripts (Windows)
+.\scripts\generate_coverage.ps1
+
+# Use convenient scripts (Unix/Linux/Mac)
+python scripts/generate_coverage.py
 ```
+
+**Current Test Coverage:** 81% 📊
+
+The test suite includes:
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test the complete communication-to-reminder flow
+- **Mocked External Dependencies**: All external services (RabbitMQ, AI models) are mocked for reliable testing
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI/CD with the following pipeline:
+- **Multi-Python Testing**: Tests on Python 3.10, 3.11, and 3.12
+- **Code Quality**: Runs Black, isort, flake8, and mypy
+- **Coverage Reporting**: Uploads coverage to Codecov
+- **Docker Build**: Validates Docker image builds on main branch
+- **Dependency Caching**: Speeds up builds with Poetry cache
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please ensure your code:
+- Follows the existing code style (Black + isort)
+- Includes appropriate tests
+- Maintains or improves test coverage
+- Passes all CI checks
+
+Please feel free to submit a Pull Request.
