@@ -3,8 +3,6 @@ Main entry point for AuDHD LifeCoach application.
 This file orchestrates the setup of the application using clean architecture principles.
 """
 
-import os
-from typing import Any, Dict
 
 from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import (
     SpaCyCommitmentIdentifier,

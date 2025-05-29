@@ -6,7 +6,7 @@ This adapter implements the MessageConsumerInterface for RabbitMQ.
 
 import json
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 import pika
 

@@ -1,7 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Callable, Optional, Type
 
 import uvicorn
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI
 
 from audhd_lifecoach.application.interfaces.web_app_interface import WebAppInterface
 

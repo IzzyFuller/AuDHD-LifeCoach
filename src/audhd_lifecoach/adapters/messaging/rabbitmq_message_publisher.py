@@ -6,16 +6,13 @@ This adapter implements the message publisher interface for RabbitMQ.
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pika
 from pika.exceptions import AMQPError
 
 # The publisher interface is defined as a Protocol - no need to inherit
 from audhd_lifecoach.adapters.messaging.rabbitmq_settings import RabbitMQSettings
-from audhd_lifecoach.application.interfaces.message_publisher_interface import (
-    MessagePublisherInterface,
-)
 
 logger = logging.getLogger(__name__)
 

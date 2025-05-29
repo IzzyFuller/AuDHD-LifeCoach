@@ -4,10 +4,8 @@ Test the MessageConsumerInterface.
 This module contains tests for ensuring proper implementation of the MessageConsumerInterface.
 """
 
-from typing import Any, Callable, Dict, List, Optional
-from unittest.mock import MagicMock
+from typing import Any, Callable
 
-import pytest
 
 from audhd_lifecoach.application.interfaces.message_consumer_interface import (
     MessageConsumerInterface,

@@ -4,7 +4,6 @@ This file orchestrates the setup of the message consumer service.
 """
 
 import logging
-from typing import Any, Dict
 
 from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import (
     SpaCyCommitmentIdentifier,

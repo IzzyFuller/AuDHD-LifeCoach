@@ -5,15 +5,13 @@ This adapter uses SpaCy's transformer models for local processing
 of natural language to identify commitments.
 """
 
-import calendar
 import logging
 import re
-from datetime import date, datetime, time, timedelta
-from typing import Any, Dict, List, Tuple
+from datetime import datetime, time, timedelta
+from typing import List, Tuple
 
 import dateparser
 import spacy
-from spacy.pipeline import EntityRuler
 from spacy.tokens import Doc
 
 from audhd_lifecoach.core.domain.entities.commitment import Commitment

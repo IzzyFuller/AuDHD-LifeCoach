@@ -4,7 +4,6 @@ Commitment entity represents a promise or obligation made by the user.
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 
 from audhd_lifecoach.core.domain.config import DEFAULT_PREP_TIME, DEFAULT_TRAVEL_TIME
 

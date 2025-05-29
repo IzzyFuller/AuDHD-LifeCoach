@@ -6,10 +6,8 @@ message publisher interface and interacts with pika as expected.
 """
 
 import json
-from typing import Any, Dict
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pika
 import pytest
 from pika.exceptions import AMQPError
 

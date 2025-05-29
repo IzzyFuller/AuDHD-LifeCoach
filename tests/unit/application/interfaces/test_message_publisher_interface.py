@@ -3,9 +3,7 @@ Unit tests for the message publisher interface.
 """
 
 from typing import Any, Dict
-from unittest.mock import MagicMock
 
-import pytest
 
 from audhd_lifecoach.application.interfaces.message_publisher_interface import (
     MessagePublisherInterface,

@@ -9,7 +9,7 @@ This test verifies the core domain flow:
 This test uses the actual transformer pipeline rather than mocks.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,7 +21,6 @@ from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequ
 from audhd_lifecoach.application.use_cases.process_communication import (
     ProcessCommunication,
 )
-from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 
 

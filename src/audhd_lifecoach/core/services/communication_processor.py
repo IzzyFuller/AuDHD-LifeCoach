@@ -8,7 +8,6 @@ of reminders from those commitments.
 
 from typing import List
 
-from audhd_lifecoach.core.domain.entities.commitment import Commitment
 from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.domain.entities.reminder import Reminder
 from audhd_lifecoach.core.interfaces.commitment_identifiable import (

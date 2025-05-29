@@ -5,11 +5,10 @@ This use case handles the flow of receiving a communication via the API,
 processing it to extract commitments, and creating reminders.
 """
 
-import json
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from audhd_lifecoach.application.dtos.communication_dto import (
     CommunicationRequestDTO,

@@ -4,7 +4,6 @@ Communication entity represents a message or interaction between individuals.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass

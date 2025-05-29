@@ -6,16 +6,12 @@ processes communications and publishes the results.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from audhd_lifecoach.application.dtos.communication_dto import (
     CommunicationRequestDTO,
-    CommunicationResponseDTO,
-)
-from audhd_lifecoach.application.interfaces.message_publisher_interface import (
-    MessagePublisherInterface,
 )
 from audhd_lifecoach.application.use_cases.process_communication import (
     ProcessCommunication,
