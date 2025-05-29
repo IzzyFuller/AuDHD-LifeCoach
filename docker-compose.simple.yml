@@ -9,14 +9,41 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=development
-      - RABBITMQ_HOST=rabbitmq
+      # Application environment
+      - ENVIRONMENT=production
+
+      # RabbitMQ connection settings - these must be provided when running
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-localhost}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_VIRTUAL_HOST=${RABBITMQ_VIRTUAL_HOST:-/}
+
+      # RabbitMQ queue and exchange configuration (set by infrastructure)
+      - RABBITMQ_CONSUME_QUEUE=${RABBITMQ_CONSUME_QUEUE:-communications}
+      - RABBITMQ_PUBLISH_EXCHANGE=${RABBITMQ_PUBLISH_EXCHANGE:-audhd_lifecoach}
+
+      # Connection tuning parameters
+      - RABBITMQ_CONNECTION_ATTEMPTS=${RABBITMQ_CONNECTION_ATTEMPTS:-3}
+      - RABBITMQ_RETRY_DELAY=${RABBITMQ_RETRY_DELAY:-2}
+      - RABBITMQ_CONNECTION_TIMEOUT=${RABBITMQ_CONNECTION_TIMEOUT:-30}
+      - RABBITMQ_HEARTBEAT=${RABBITMQ_HEARTBEAT:-600}
+      # Optional SSL settings (uncomment if using SSL)
+      # - RABBITMQ_USE_SSL=${RABBITMQ_USE_SSL:-false}
+      # - RABBITMQ_SSL_CA_CERT_PATH=${RABBITMQ_SSL_CA_CERT_PATH}
+      # - RABBITMQ_SSL_CERT_PATH=${RABBITMQ_SSL_CERT_PATH}
+      # - RABBITMQ_SSL_KEY_PATH=${RABBITMQ_SSL_KEY_PATH}
     volumes:
-      # Store Hugging Face models on the D: drive
+      # Store Hugging Face models on the D: drive (Windows-specific)
+      # For Linux/Mac, change to: - ./huggingface_cache:/huggingface
       - D:/HuggingFaceModels:/huggingface
     restart: unless-stopped
-    depends_on:
-      - rabbitmq
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   message-consumer:
     build:
@@ -25,25 +52,48 @@ services:
     image: audhd-lifecoach:latest
     command: [ "python", "message_consumer_entrypoint.py" ]
     environment:
-      - ENVIRONMENT=development
-      - RABBITMQ_HOST=rabbitmq
+      # Application environment
+      - ENVIRONMENT=production
+
+      # RabbitMQ connection settings - these must be provided when running
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-localhost}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_VIRTUAL_HOST=${RABBITMQ_VIRTUAL_HOST:-/}
+
+      # RabbitMQ queue and exchange configuration (set by infrastructure)
+      - RABBITMQ_CONSUME_QUEUE=${RABBITMQ_CONSUME_QUEUE:-communications}
+      - RABBITMQ_PUBLISH_EXCHANGE=${RABBITMQ_PUBLISH_EXCHANGE:-audhd_lifecoach}
+
+      # Connection tuning parameters
+      - RABBITMQ_CONNECTION_ATTEMPTS=${RABBITMQ_CONNECTION_ATTEMPTS:-3}
+      - RABBITMQ_RETRY_DELAY=${RABBITMQ_RETRY_DELAY:-2}
+      - RABBITMQ_CONNECTION_TIMEOUT=${RABBITMQ_CONNECTION_TIMEOUT:-30}
+      - RABBITMQ_HEARTBEAT=${RABBITMQ_HEARTBEAT:-600}
+      # Optional SSL settings (uncomment if using SSL)
+      # - RABBITMQ_USE_SSL=${RABBITMQ_USE_SSL:-false}
+      # - RABBITMQ_SSL_CA_CERT_PATH=${RABBITMQ_SSL_CA_CERT_PATH}
+      # - RABBITMQ_SSL_CERT_PATH=${RABBITMQ_SSL_CERT_PATH}
+      # - RABBITMQ_SSL_KEY_PATH=${RABBITMQ_SSL_KEY_PATH}
     volumes:
-      # Store Hugging Face models on the D: drive
+      # Store Hugging Face models on the D: drive (Windows-specific)
+      # For Linux/Mac, change to: - ./huggingface_cache:/huggingface
       - D:/HuggingFaceModels:/huggingface
     restart: unless-stopped
-    depends_on:
-      - rabbitmq
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import sys; sys.exit(0)" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672" # AMQP protocol
-      - "15672:15672" # Management interface
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-
-volumes:
-  rabbitmq_data:
+# Note: RabbitMQ service removed - assumes external RabbitMQ infrastructure
+# The application now expects RabbitMQ to be provided externally (e.g., via Terraform)
+#
+# To run with external RabbitMQ, set the following environment variables:
+# export RABBITMQ_HOST=your-rabbitmq-host
+# export RABBITMQ_USERNAME=your-username
+# export RABBITMQ_PASSWORD=your-password
+#
+# Then run: docker-compose -f docker-compose.simple.yml up

@@ -2,18 +2,23 @@
 """
 A simple script to send a test message to the RabbitMQ queue.
 This can be used to test the message consumer functionality.
+
+The script reads RabbitMQ configuration from environment variables,
+falling back to localhost defaults for development.
 """
 import json
 import pika
 import sys
 import datetime
+import os
 
-# RabbitMQ connection parameters
-host = "localhost"  # Change this if RabbitMQ is running elsewhere
-port = 5672
-username = "guest"
-password = "guest"
-queue_name = "communications"
+# RabbitMQ connection parameters from environment or defaults
+host = os.getenv("RABBITMQ_HOST", "localhost")
+port = int(os.getenv("RABBITMQ_PORT", "5672"))
+username = os.getenv("RABBITMQ_USERNAME", "guest")
+password = os.getenv("RABBITMQ_PASSWORD", "guest")
+virtual_host = os.getenv("RABBITMQ_VIRTUAL_HOST", "/")
+queue_name = os.getenv("RABBITMQ_CONSUME_QUEUE", "communications")
 
 # Sample message data
 default_message = {
@@ -31,12 +36,12 @@ def send_message(message_data=None):
         message_data: The message data to send. If None, a default message will be used.
     """
     message_data = message_data or default_message
-    
-    # Connect to RabbitMQ
+      # Connect to RabbitMQ using environment configuration
     credentials = pika.PlainCredentials(username, password)
     parameters = pika.ConnectionParameters(
         host=host,
         port=port,
+        virtual_host=virtual_host,
         credentials=credentials
     )
     

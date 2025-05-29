@@ -106,37 +106,70 @@ flowchart LR
 
 ### Quick Start with Docker
 
-The simplest way to run AuDHD-LifeCoach is using Docker:
+#### For Production (External Infrastructure)
+
+The production Docker configuration assumes external RabbitMQ infrastructure exists and is managed separately (e.g., by Terraform). You need to provide RabbitMQ connection details via environment variables:
+
+```bash
+# Set required environment variables
+export RABBITMQ_HOST=your-rabbitmq-host
+export RABBITMQ_USERNAME=your-username  
+export RABBITMQ_PASSWORD=your-password
+export RABBITMQ_PUBLISH_EXCHANGE=audhd_lifecoach
+export RABBITMQ_CONSUME_QUEUE=communications
+
+# Build and run the application
+docker build -t audhd-lifecoach:latest -f Dockerfile.simple .
+docker-compose -f docker-compose.simple.yml up
+```
+
+Or use an environment file:
+```bash
+# Copy and edit the example environment file
+cp .env.example .env
+# Edit .env with your RabbitMQ settings
+
+# Run with environment file
+docker-compose -f docker-compose.simple.yml --env-file .env up
+```
+
+#### For Development (Built-in RabbitMQ)
+
+For local development, use the development Docker Compose file that includes a RabbitMQ service:
 
 ```bash
 # Build the Docker image
 docker build -t audhd-lifecoach:latest -f Dockerfile.simple .
 
-# Run the application with all services
-docker-compose -f docker-compose.simple.yml up
+# Run with development configuration (includes RabbitMQ)
+docker-compose -f docker-compose.dev.yml up
 ```
 
 This will start:
 - The web application on [http://localhost:8000](http://localhost:8000)
 - The message consumer service connected to RabbitMQ
-- RabbitMQ message broker with management UI on [http://localhost:15672](http://localhost:15672) (login: guest/guest)
+- **Development only**: RabbitMQ message broker with management UI on [http://localhost:15672](http://localhost:15672) (login: guest/guest)
 
-> **Note for Windows Users:** The Docker configuration mounts a volume at `D:/HuggingFaceModels` to store large AI model files. Make sure this directory exists or modify the path in `docker-compose.simple.yml` if needed.
+> **Note for Windows Users:** The Docker configuration mounts a volume at `D:/HuggingFaceModels` to store large AI model files. Make sure this directory exists or modify the path in the docker-compose files if needed.
+
+> **Note for Production:** The main `docker-compose.simple.yml` assumes external RabbitMQ infrastructure and requires environment variables to be set. Use `docker-compose.dev.yml` for local development with built-in RabbitMQ.
 
 ### Testing the Message Consumer
 
-To test the message consumer functionality:
+To test the message consumer functionality, you can use the test script which now reads configuration from environment variables:
 
 ```bash
-# Send a test message to the queue
+# For development (using built-in RabbitMQ from docker-compose.dev.yml)
 python scripts/send_test_message.py "I'll call you at 15:30 tomorrow."
-```
 
-You can also customize your message:
-
-```bash
+# For external RabbitMQ, set environment variables first:
+export RABBITMQ_HOST=your-rabbitmq-host
+export RABBITMQ_USERNAME=your-username
+export RABBITMQ_PASSWORD=your-password
 python scripts/send_test_message.py "Your custom message with a commitment"
 ```
+
+The script will automatically use the configured RabbitMQ settings from your environment.
 
 ### Local Development Setup
 
@@ -175,16 +208,46 @@ If you prefer to run the application directly on your machine:
 
 ### Docker Configuration
 
-This project uses a Docker setup with:
-- `Dockerfile.simple`: Contains the build configuration using Poetry
-- `docker-compose.simple.yml`: Orchestrates multiple services:
-  - `webapp`: Web application service
-  - `message-consumer`: Message processing service
-  - `rabbitmq`: Message broker service
+This project includes two Docker configurations:
+
+#### Production Configuration (`docker-compose.simple.yml`)
+- **Assumes external RabbitMQ infrastructure** (managed by Terraform/infrastructure team)
+- Requires environment variables for RabbitMQ connection details
+- No built-in message broker services
+- Suitable for production deployments
+- Uses `.env` file or environment variables for configuration
+
+#### Development Configuration (`docker-compose.dev.yml`)
+- **Includes built-in RabbitMQ service** for local development
+- Self-contained for easy local testing
+- RabbitMQ management UI available at [http://localhost:15672](http://localhost:15672)
+- Uses hardcoded development defaults
+
+#### Configuration Files
+- `Dockerfile.simple`: Build configuration using Poetry
+- `.env.example`: Template for environment variables
 - `docker-entrypoint.py`: Entry point script for the web application
 - `message_consumer_entrypoint.py`: Entry point script for the message consumer
 
 The Docker configuration pre-downloads the necessary Hugging Face models during the build process and stores them in a mounted volume to conserve space.
+
+#### Environment Variables
+
+The application uses the following environment variables for RabbitMQ configuration:
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `RABBITMQ_HOST` | RabbitMQ hostname | `localhost` | Yes |
+| `RABBITMQ_PORT` | RabbitMQ port | `5672` | No |
+| `RABBITMQ_USERNAME` | RabbitMQ username | `guest` | Yes |
+| `RABBITMQ_PASSWORD` | RabbitMQ password | `guest` | Yes |
+| `RABBITMQ_VIRTUAL_HOST` | RabbitMQ virtual host | `/` | No |
+| `RABBITMQ_CONSUME_QUEUE` | Queue name for consuming | `communications` | No |
+| `RABBITMQ_PUBLISH_EXCHANGE` | Exchange name for publishing | `audhd_lifecoach` | No |
+| `RABBITMQ_CONNECTION_ATTEMPTS` | Connection retry attempts | `3` | No |
+| `RABBITMQ_RETRY_DELAY` | Delay between retries (seconds) | `2` | No |
+| `RABBITMQ_CONNECTION_TIMEOUT` | Connection timeout (seconds) | `30` | No |
+| `RABBITMQ_HEARTBEAT` | Heartbeat interval (seconds) | `600` | No |
 
 ### Running Tests
 
