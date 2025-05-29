@@ -39,15 +39,15 @@ def main():
     # Change to project root
     project_root = Path(__file__).parent.parent
     print(f"📁 Working directory: {project_root}")
-    
-    # Run tests with coverage
+      # Run tests with coverage
     run_command(
-        "python -m pytest tests/ --cov=src/audhd_lifecoach --cov-report=term --cov-report=html --cov-report=xml",
+        "poetry run pytest tests/ --cov=src/audhd_lifecoach --cov-report=term --cov-report=html --cov-report=xml",
         "Running tests with coverage"
     )
-      # Generate coverage badge
+    
+    # Generate coverage badge
     run_command(
-        "coverage-badge -f -o coverage.svg",
+        "poetry run coverage-badge -f -o coverage.svg",
         "Generating coverage badge"
     )
     

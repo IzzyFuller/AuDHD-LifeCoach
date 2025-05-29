@@ -192,19 +192,19 @@ The project includes comprehensive test coverage with both unit and integration 
 
 ```bash
 # Run all tests
-pytest
+poetry run pytest
 
 # Run only unit tests
-pytest tests/unit
+poetry run pytest tests/unit
 
 # Run only integration tests  
-pytest tests/integration
+poetry run pytest tests/integration
 
 # Run tests with coverage reporting
-pytest --cov=src/audhd_lifecoach --cov-report=term --cov-report=html
+poetry run pytest --cov=src/audhd_lifecoach --cov-report=term --cov-report=html
 
 # Generate coverage badge
-coverage-badge -o coverage.svg
+poetry run coverage-badge -o coverage.svg
 
 # Use convenient scripts (Windows)
 .\scripts\generate_coverage.ps1
@@ -232,9 +232,30 @@ The project uses GitHub Actions for CI/CD with the following pipeline:
 ## Contributing
 
 Contributions are welcome! Please ensure your code:
+- Uses **Poetry for dependency management** (not pip directly)
 - Follows the existing code style (Black + isort)
 - Includes appropriate tests
 - Maintains or improves test coverage
 - Passes all CI checks
+
+**Development Workflow:**
+```bash
+# Install dependencies
+poetry install
+
+# Run tests
+poetry run pytest
+
+# Run linting
+poetry run black src/ tests/
+poetry run isort src/ tests/
+poetry run flake8 src/ tests/
+
+# Run type checking
+poetry run mypy src/
+
+# Generate coverage report
+poetry run pytest --cov=src/audhd_lifecoach --cov-report=html
+```
 
 Please feel free to submit a Pull Request.

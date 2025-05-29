@@ -12,14 +12,15 @@ Write-Host "📁 Working directory: $projectRoot" -ForegroundColor Blue
 try {
     # Run tests with coverage
     Write-Host "🔄 Running tests with coverage..." -ForegroundColor Yellow
-    python -m pytest tests/ --cov=src/audhd_lifecoach --cov-report=term --cov-report=html --cov-report=xml
+    poetry run pytest tests/ --cov=src/audhd_lifecoach --cov-report=term --cov-report=html --cov-report=xml
     
     if ($LASTEXITCODE -ne 0) {
         throw "Tests failed with exit code $LASTEXITCODE"
     }
+    
     # Generate coverage badge
     Write-Host "🔄 Generating coverage badge..." -ForegroundColor Yellow
-    coverage-badge -f -o coverage.svg
+    poetry run coverage-badge -f -o coverage.svg
     
     if ($LASTEXITCODE -ne 0) {
         throw "Coverage badge generation failed with exit code $LASTEXITCODE"
