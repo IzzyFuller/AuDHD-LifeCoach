@@ -10,9 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from audhd_lifecoach.application.dtos.communication_dto import (
-    CommunicationRequestDTO,
-)
+from audhd_lifecoach.application.dtos.communication_dto import CommunicationRequestDTO
 from audhd_lifecoach.application.use_cases.process_communication import (
     ProcessCommunication,
 )

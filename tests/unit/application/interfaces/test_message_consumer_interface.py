@@ -6,7 +6,6 @@ This module contains tests for ensuring proper implementation of the MessageCons
 
 from typing import Any, Callable
 
-
 from audhd_lifecoach.application.interfaces.message_consumer_interface import (
     MessageConsumerInterface,
 )
