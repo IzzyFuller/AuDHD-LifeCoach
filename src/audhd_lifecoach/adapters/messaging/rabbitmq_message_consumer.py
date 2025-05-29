@@ -53,7 +53,7 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
             parameters = pika.ConnectionParameters(
                 host=self.settings.host,
                 port=self.settings.port,
-                virtual_host=self.settings.host,
+                virtual_host=self.settings.virtual_host,
                 credentials=credentials,
                 connection_attempts=self.settings.connection_attempts,
                 retry_delay=self.settings.retry_delay,
