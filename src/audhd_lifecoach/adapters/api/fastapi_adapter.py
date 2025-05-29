@@ -1,19 +1,23 @@
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
-from fastapi import FastAPI, APIRouter, HTTPException
 import uvicorn
+from fastapi import APIRouter, FastAPI, HTTPException
 
 from audhd_lifecoach.application.interfaces.web_app_interface import WebAppInterface
 
 
 class FastAPIAdapter(WebAppInterface):
     """Adapter for FastAPI that implements the WebAppInterface."""
-    
-    def __init__(self, title: str = "AuDHD LifeCoach", description: str = "A life coach application for people with AuDHD"):
+
+    def __init__(
+        self,
+        title: str = "AuDHD LifeCoach",
+        description: str = "A life coach application for people with AuDHD",
+    ):
         """Initialize the FastAPI adapter."""
         self.app = FastAPI(title=title, description=description)
         self.router = APIRouter()
-        
+
     def register_route(
         self,
         path: str,
@@ -21,11 +25,11 @@ class FastAPIAdapter(WebAppInterface):
         handler_func: Callable,
         response_model: Optional[Type] = None,
         status_code: int = 200,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Register a route with FastAPI."""
         method = http_method.lower()
-        
+
         # Get the appropriate method from the router
         if method == "get":
             route_method = self.router.get
@@ -39,21 +43,18 @@ class FastAPIAdapter(WebAppInterface):
             route_method = self.router.patch
         else:
             raise ValueError(f"HTTP method {http_method} not supported")
-        
+
         # Register the route
         route_method(
-            path=path,
-            response_model=response_model,
-            status_code=status_code,
-            **kwargs
+            path=path, response_model=response_model, status_code=status_code, **kwargs
         )(handler_func)
-    
+
     def get_app(self) -> FastAPI:
         """Return the FastAPI application instance."""
         # Make sure the router is included in the app
         self.app.include_router(self.router)
         return self.app
-    
+
     def run(self, host: str = "0.0.0.0", port: int = 8000, **kwargs) -> None:
         """Run the FastAPI application with Uvicorn."""
         app = self.get_app()

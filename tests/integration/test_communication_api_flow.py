@@ -9,61 +9,65 @@ This test verifies the full flow via the API:
 
 This test uses the actual transformer pipeline rather than mocks.
 """
-import pytest
+
 from datetime import datetime
-from fastapi import status
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
-from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import (
+    SpaCyCommitmentIdentifier,
+)
+from audhd_lifecoach.adapters.api.communication_controller import (
+    CommunicationController,
+)
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
-from audhd_lifecoach.adapters.api.communication_controller import CommunicationController
-from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
-from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationResponseDTO
+from audhd_lifecoach.application.use_cases.process_communication import (
+    ProcessCommunication,
+)
+from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 
 
 class TestCommunicationAPIFlow:
     """Integration test for the communication API flow."""
-    
+
     @pytest.fixture
     def client(self):
         """Create a test client for the API using the FastAPI adapter."""
-        app = FastAPIAdapter(
-            title="Test API",
-            description="API for testing"
-        )
-        
+        app = FastAPIAdapter(title="Test API", description="API for testing")
+
         # Create a mock message publisher
         mock_publisher = MagicMock()
         mock_publisher.connect.return_value = True
         mock_publisher.publish_message.return_value = True
-        
+
         # Use the actual transformer pipeline
         identifier = SpaCyCommitmentIdentifier()
         processor = CommunicationProcessor(identifier)
-          # Create the use case with the mock publisher
+        # Create the use case with the mock publisher
         process_communication = ProcessCommunication(
-            communication_processor=processor,
-            message_publisher=mock_publisher
+            communication_processor=processor, message_publisher=mock_publisher
         )
-        
+
         # Create controller with the use case
         controller = CommunicationController(process_communication)
-        
+
         # Register the route
         app.register_route(
             path="/communications",
             http_method="POST",
             handler_func=controller.process_communication,
-            response_model=CommunicationResponseDTO
+            response_model=CommunicationResponseDTO,
         )
-        
+
         # Get the fully configured app with router included
         fastapi_app = app.get_app()
-        
+
         return TestClient(fastapi_app)
-    
+
     @pytest.mark.integration
     def test_process_communication_with_commitment(self, client):
         """Test processing a communication with a commitment via the API."""
@@ -72,27 +76,26 @@ class TestCommunicationAPIFlow:
             "content": "I'll call you at 3:30 PM tomorrow.",
             "sender": "Alice",
             "recipient": "Bob",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
         # Act
-        response = client.post(
-            "/communications",
-            json=communication_data
-        )
-        
+        response = client.post("/communications", json=communication_data)
+
         # Assert
-        assert response.status_code == status.HTTP_200_OK, f"Unexpected response: {response.json()}"
-        
+        assert (
+            response.status_code == status.HTTP_200_OK
+        ), f"Unexpected response: {response.json()}"
+
         data = response.json()
         assert data["processed"] is True
         assert len(data["reminders"]) > 0, "No reminders were created"
-        
+
         # Check that at least one reminder contains the commitment details
         reminder = data["reminders"][0]
         assert reminder["message"] is not None
         assert reminder["when"] is not None
-    
+
     @pytest.mark.integration
     def test_process_communication_no_commitment(self, client):
         """Test processing a communication without any commitments via the API."""
@@ -101,18 +104,17 @@ class TestCommunicationAPIFlow:
             "content": "The weather is nice today.",
             "sender": "Alice",
             "recipient": "Bob",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
         # Act
-        response = client.post(
-            "/communications",
-            json=communication_data
-        )
-        
+        response = client.post("/communications", json=communication_data)
+
         # Assert
         assert response.status_code == status.HTTP_200_OK
-        
+
         data = response.json()
         assert data["processed"] is True
-        assert len(data["reminders"]) == 0, "Reminders were created when none were expected"
+        assert (
+            len(data["reminders"]) == 0
+        ), "Reminders were created when none were expected"
