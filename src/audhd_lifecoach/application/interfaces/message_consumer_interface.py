@@ -33,7 +33,7 @@ class MessageConsumerInterface(Protocol):
         """
         ...
     
-    def consume_messages(self, queue_name: str, callback: Callable[[dict], Any]) -> None:
+    def consume_messages(self, callback: Callable[[dict], Any]) -> None:
         """
         Start consuming messages from the specified queue.
         

@@ -9,6 +9,7 @@ from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitm
 from audhd_lifecoach.adapters.api.fastapi_adapter import FastAPIAdapter
 from audhd_lifecoach.adapters.api.communication_controller import CommunicationController
 from audhd_lifecoach.adapters.api.health_controller import HealthController
+from audhd_lifecoach.adapters.messaging.rabbitmq_settings import RabbitMQSettings
 from audhd_lifecoach.application.interfaces.web_app_interface import WebAppInterface
 from audhd_lifecoach.application.dtos.communication_dto import CommunicationResponseDTO
 from audhd_lifecoach.application.dtos.health_dto import HealthCheckResponseDTO
@@ -28,33 +29,24 @@ def create_app() -> WebAppInterface:
     # Initialize controllers
     health_controller = HealthController()
     
-    # Get message broker configuration from environment variables
-    rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
-    rabbitmq_port = int(os.environ.get("RABBITMQ_PORT", "5672"))
-    rabbitmq_user = os.environ.get("RABBITMQ_USER", "guest")
-    rabbitmq_pass = os.environ.get("RABBITMQ_PASS", "guest")
-    exchange_name = os.environ.get("RABBITMQ_EXCHANGE", "audhd_lifecoach")
+    # Load RabbitMQ configuration from environment variables
+    rabbitmq_settings = RabbitMQSettings()
     
-    # Initialize the message publisher
-    message_publisher = RabbitMQMessagePublisher(
-        host=rabbitmq_host,
-        port=rabbitmq_port,
-        username=rabbitmq_user,
-        password=rabbitmq_pass
-    )
+    # Initialize the message publisher with settings
+    message_publisher = RabbitMQMessagePublisher(rabbitmq_settings)
     
     # Connect to RabbitMQ
-    message_publisher.connect()
+    if not message_publisher.connect():
+        raise RuntimeError("Failed to connect to RabbitMQ")
     
     # Initialize dependencies for communication processing
     identifier = SpaCyCommitmentIdentifier()
     processor = CommunicationProcessor(identifier)
     
-    # Initialize the use case with the message publisher
+    # Initialize the use case with the message publisher (no exchange name needed)
     process_communication_use_case = ProcessCommunication(
         communication_processor=processor,
-        message_publisher=message_publisher,
-        exchange_name=exchange_name
+        message_publisher=message_publisher
     )
     
     communication_controller = CommunicationController(process_communication_use_case)

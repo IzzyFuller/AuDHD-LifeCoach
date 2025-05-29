@@ -7,5 +7,3 @@ like AI services, APIs, and messaging systems.
 from . import ai
 from . import api
 from . import messaging
-from . import repositories
-

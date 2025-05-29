@@ -17,28 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class MessageConsumerService:
-    """
-    Service that consumes messages from a message broker and processes
-    them to extract commitments and create reminders.
-    """
+    """Service for consuming messages from RabbitMQ."""
     
-    def __init__(self, 
-                 message_consumer: MessageConsumerInterface, 
-                 process_communication_use_case: ProcessCommunication,
-                 queue_name: str = "communications"):
-        """
-        Initialize the message consumer service.
-        
-        Args:
-            message_consumer: The message consumer adapter to use
-            process_communication_use_case: The use case for processing communications
-            queue_name: The name of the queue to consume from
-        """
+    def __init__(
+        self,
+        message_consumer: MessageConsumerInterface,
+        process_communication_use_case: ProcessCommunication
+    ):
+        """Initialize without any infrastructure-specific settings."""
         self.message_consumer = message_consumer
         self.process_communication_use_case = process_communication_use_case
-        self.queue_name = queue_name
-        self.is_consuming = False
-        
+    
     def _validate_message(self, message_data: Dict[str, Any]) -> bool:
         """
         Validate that a message has the required fields.
@@ -171,8 +160,7 @@ class MessageConsumerService:
         
         try:
             # Start consuming messages
-            logger.info(f"Starting to consume messages from queue '{self.queue_name}'")
-            self.message_consumer.consume_messages(self.queue_name, self._message_callback)
+            self.message_consumer.consume_messages(self._message_callback)
         except Exception as e:
             logger.exception(f"Error in consumer loop: {e}")
         finally:

@@ -31,7 +31,6 @@ class MessagePublisherInterface(Protocol):
         ...
     
     def publish_message(self, 
-                        exchange: str,
                         routing_key: str, 
                         message: Dict[str, Any],
                         content_type: str = "application/json",

@@ -43,15 +43,14 @@ class TestCommunicationToReminderFlow:
         publisher = MagicMock()
         publisher.connect.return_value = True
         publisher.publish_message.return_value = True
-        return publisher
-
+        return publisher    
+    
     @pytest.fixture
     def process_communication_use_case(self, communication_processor, mock_message_publisher):
         """Create the process communication use case with the mock publisher."""
         return ProcessCommunication(
             communication_processor=communication_processor,
-            message_publisher=mock_message_publisher,
-            exchange_name='test-exchange'
+            message_publisher=mock_message_publisher
         )
 
     @pytest.mark.integration

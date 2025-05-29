@@ -7,9 +7,9 @@ import json
 import logging
 from typing import Any, Callable, Dict, Optional
 
-# The pika library is used for RabbitMQ communication
 import pika
 
+from audhd_lifecoach.adapters.messaging.rabbitmq_settings import RabbitMQSettings
 from audhd_lifecoach.application.interfaces.message_consumer_interface import MessageConsumerInterface
 
 
@@ -24,25 +24,14 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
     from a queue, and handle acknowledgments/rejections.
     """
     
-    def __init__(self, host: str = 'localhost', port: int = 5672, 
-                 username: str = 'guest', password: str = 'guest',
-                 virtual_host: str = '/'):
+    def __init__(self, settings: RabbitMQSettings):
         """
-        Initialize the RabbitMQ message consumer.
+        Initialize the RabbitMQ message consumer with settings.
         
         Args:
-            host: RabbitMQ host
-            port: RabbitMQ port
-            username: RabbitMQ username
-            password: RabbitMQ password
-            virtual_host: RabbitMQ virtual host
+            settings: RabbitMQ configuration settings
         """
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-        self.virtual_host = virtual_host
-        
+        self.settings = settings
         self._connection = None
         self._channel = None
         self._consumer_tag = None
@@ -50,26 +39,38 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
     
     def connect(self) -> bool:
         """
-        Connect to the RabbitMQ server.
+        Connect to the RabbitMQ server using configured settings.
         
         Returns:
             bool: True if connection successful, False otherwise
         """
-        # Create connection parameters
-        credentials = pika.PlainCredentials(self.username, self.password)
-        parameters = pika.ConnectionParameters(
-            host=self.host,
-            port=self.port,
-            virtual_host=self.virtual_host,
-            credentials=credentials
-        )
-        
-        # Connect to RabbitMQ
-        self._connection = pika.BlockingConnection(parameters)
-        self._channel = self._connection.channel()
-        
-        logger.info(f"Connected to RabbitMQ at {self.host}:{self.port}")
-        return True
+        try:
+            # Create connection parameters from settings
+            credentials = pika.PlainCredentials(
+                self.settings.username, 
+                self.settings.password
+            )
+            parameters = pika.ConnectionParameters(
+                host=self.settings.host,
+                port=self.settings.port,
+                virtual_host=self.settings.host,
+                credentials=credentials,
+                connection_attempts=self.settings.connection_attempts,
+                retry_delay=self.settings.retry_delay,
+                socket_timeout=self.settings.connection_timeout,
+                heartbeat=self.settings.heartbeat
+            )
+            
+            # Connect to RabbitMQ
+            self._connection = pika.BlockingConnection(parameters)
+            self._channel = self._connection.channel()
+            
+            logger.info(f"Connected to RabbitMQ at {self.settings.host}:{self.settings.port}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to connect to RabbitMQ: {e}")
+            return False
     
     def disconnect(self) -> bool:
         """
@@ -95,28 +96,27 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         logger.info("Disconnected from RabbitMQ")
         return True
     
-    def consume_messages(self, queue_name: str, callback: Callable[[Dict[str, Any]], Any]) -> None:
+    def consume_messages(self, callback: Callable[[Dict[str, Any]], Any]) -> None:
         """
-        Start consuming messages from the specified queue.
+        Start consuming messages from the configured queue.
         
         Args:
-            queue_name: Name of the queue to consume from
             callback: Function to call when a message is received
         """
+        if not self._channel:
+            raise RuntimeError("Not connected to RabbitMQ")
+        
         # Store the callback function
         self._callback = callback
-            
-        # Declare the queue (ensures it exists)
-        self._channel.queue_declare(queue=queue_name, durable=True)
         
-        # Start consuming messages
+        # Start consuming from the configured queue (no queue declaration)
         self._consumer_tag = self._channel.basic_consume(
-            queue=queue_name,
+            queue=self.settings.consume_queue_name,
             on_message_callback=self._on_message,
             auto_ack=False
         )
         
-        logger.info(f"Started consuming messages from queue '{queue_name}'")
+        logger.info(f"Started consuming messages from queue '{self.settings.consume_queue_name}'")
         
         # Start the IO loop to process messages
         self._channel.start_consuming()
@@ -165,6 +165,9 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if successful, False otherwise
         """
+        if not self._channel:
+            raise RuntimeError("Not connected to RabbitMQ")
+        
         # In RabbitMQ, the message_id is the delivery tag
         delivery_tag = int(message_id)
         self._channel.basic_ack(delivery_tag=delivery_tag)
@@ -181,8 +184,10 @@ class RabbitMQMessageConsumer(MessageConsumerInterface):
         Returns:
             bool: True if successful, False otherwise
         """
+        if not self._channel:
+            raise RuntimeError("Not connected to RabbitMQ")
+        
         # In RabbitMQ, the message_id is the delivery tag
         delivery_tag = int(message_id)
         self._channel.basic_reject(delivery_tag=delivery_tag, requeue=requeue)
         return True
-    

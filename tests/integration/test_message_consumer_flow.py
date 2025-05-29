@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import SpaCyCommitmentIdentifier
 from audhd_lifecoach.adapters.messaging.rabbitmq_message_consumer import RabbitMQMessageConsumer
+from audhd_lifecoach.adapters.messaging.rabbitmq_settings import RabbitMQSettings
 from audhd_lifecoach.core.services.communication_processor import CommunicationProcessor
 from audhd_lifecoach.application.services.message_consumer_service import MessageConsumerService
 from audhd_lifecoach.application.use_cases.process_communication import ProcessCommunication
@@ -47,18 +48,33 @@ class TestMessageConsumerFlow:
             mock_channel.start_consuming = MagicMock()
             
             yield mock_connection, mock_channel
-    
+            
     @pytest.fixture
-    def rabbitmq_adapter(self, mock_pika_connection):
-        """Create a real RabbitMQ adapter with mocked connection"""
-        # This uses the real adapter but with mocked Pika internals
-        adapter = RabbitMQMessageConsumer(
+    def test_settings(self):
+        """Create test RabbitMQ settings."""
+        return RabbitMQSettings(
             host='localhost',
             port=5672,
             username='guest',
             password='guest',
-            virtual_host='/'
+            virtual_host='/',
+            consume_queue_name='communications',
+            publish_exchange_name='test_exchange',
+            connection_attempts=3,
+            retry_delay=2,
+            connection_timeout=30,
+            heartbeat=600,
+            use_ssl=False,
+            ssl_ca_cert_path=None,
+            ssl_cert_path=None,
+            ssl_key_path=None
         )
+    
+    @pytest.fixture
+    def rabbitmq_adapter(self, mock_pika_connection, test_settings):
+        """Create a real RabbitMQ adapter with mocked connection"""
+        # This uses the real adapter but with mocked Pika internals
+        adapter = RabbitMQMessageConsumer(test_settings)
         return adapter
     
     @pytest.fixture
@@ -83,15 +99,13 @@ class TestMessageConsumerFlow:
         # Create the process communication use case with mock publisher
         process_communication = ProcessCommunication(
             communication_processor=communication_processor,
-            message_publisher=mock_message_publisher,
-            exchange_name='test-exchange'
+            message_publisher=mock_message_publisher
         )
         
         # Create the message consumer service
         service = MessageConsumerService(
             message_consumer=rabbitmq_adapter,
-            process_communication_use_case=process_communication,
-            queue_name='communications'
+            process_communication_use_case=process_communication
         )
         
         return service

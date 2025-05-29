@@ -25,8 +25,7 @@ class ProcessCommunication:
     def __init__(
         self,
         communication_processor: CommunicationProcessor,
-        message_publisher: MessagePublisherInterface,
-        exchange_name: str = "audhd_lifecoach"
+        message_publisher: MessagePublisherInterface
     ):
         """
         Initialize the use case with a communication processor.
@@ -34,11 +33,9 @@ class ProcessCommunication:
         Args:
             communication_processor: Service that processes communications
             message_publisher: Message publisher for broadcasting results
-            exchange_name: Name of the exchange to publish messages to
         """
         self.communication_processor = communication_processor
         self.message_publisher = message_publisher
-        self.exchange_name = exchange_name
     
     def execute(self, communication_dto: CommunicationRequestDTO) -> CommunicationResponseDTO:
         """
@@ -149,7 +146,6 @@ class ProcessCommunication:
         
         # Publish the message
         success = self.message_publisher.publish_message(
-            exchange=self.exchange_name,
             routing_key=routing_key,
             message=message
         )

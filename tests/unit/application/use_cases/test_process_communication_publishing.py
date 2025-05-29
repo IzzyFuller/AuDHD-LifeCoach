@@ -62,8 +62,7 @@ class TestProcessCommunicationPublishing:
         # Arrange
         use_case = ProcessCommunication(
             communication_processor=mock_communication_processor,
-            message_publisher=mock_message_publisher,
-            exchange_name="test-exchange"
+            message_publisher=mock_message_publisher
         )
         
         # Act
@@ -79,8 +78,7 @@ class TestProcessCommunicationPublishing:
         mock_message_publisher.publish_message.assert_called_once()
         args, kwargs = mock_message_publisher.publish_message.call_args
         
-        # Check exchange and routing key
-        assert kwargs["exchange"] == "test-exchange"
+        # Check routing key and message contents (exchange is now configured in settings)
         assert kwargs["routing_key"] == "communication.processed"
         
         # Check message contents
@@ -91,7 +89,7 @@ class TestProcessCommunicationPublishing:
         assert message["original_communication"]["recipient"] == communication_dto.recipient
         assert message["processed"] is True
         assert len(message["reminders"]) == 1
-    
+
     def test_execute_with_publisher_failure(self, mock_communication_processor, mock_message_publisher, communication_dto):
         """Test that the use case handles publishing failures gracefully."""
         # Arrange
@@ -99,8 +97,7 @@ class TestProcessCommunicationPublishing:
         
         use_case = ProcessCommunication(
             communication_processor=mock_communication_processor,
-            message_publisher=mock_message_publisher,
-            exchange_name="test-exchange"
+            message_publisher=mock_message_publisher
         )
         
         # Act
@@ -118,8 +115,7 @@ class TestProcessCommunicationPublishing:
         
         use_case = ProcessCommunication(
             communication_processor=mock_communication_processor,
-            message_publisher=mock_message_publisher,
-            exchange_name="test-exchange"
+            message_publisher=mock_message_publisher
         )
         
         # Act

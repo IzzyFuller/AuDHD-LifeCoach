@@ -42,12 +42,10 @@ class TestCommunicationAPIFlow:
         # Use the actual transformer pipeline
         identifier = SpaCyCommitmentIdentifier()
         processor = CommunicationProcessor(identifier)
-        
-        # Create the use case with the mock publisher
+          # Create the use case with the mock publisher
         process_communication = ProcessCommunication(
             communication_processor=processor,
-            message_publisher=mock_publisher,
-            exchange_name="test-exchange"
+            message_publisher=mock_publisher
         )
         
         # Create controller with the use case
