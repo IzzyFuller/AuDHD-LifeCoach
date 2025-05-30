@@ -1,5 +1,5 @@
 """
-Web Application Interface that defines how external web frameworks 
+Web Application Interface that defines how external web frameworks
 should interact with our application layer.
 """
 

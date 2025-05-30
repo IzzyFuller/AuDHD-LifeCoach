@@ -13,16 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def run_command(cmd, description):
     """Run a command and handle errors."""
     print(f"🔄 {description}...")
     try:
         result = subprocess.run(
-            cmd, 
-            shell=True, 
-            check=True, 
-            capture_output=True, 
-            text=True
+            cmd, shell=True, check=True, capture_output=True, text=True
         )
         return result
     except subprocess.CalledProcessError as e:
@@ -31,30 +28,31 @@ def run_command(cmd, description):
         print(f"STDERR: {e.stderr}")
         sys.exit(1)
 
+
 def main():
     """Main function to run coverage analysis."""
     print("📊 Running AuDHD-LifeCoach Test Coverage Analysis")
     print("=" * 50)
-    
+
     # Change to project root
     project_root = Path(__file__).parent.parent
     print(f"📁 Working directory: {project_root}")
-      # Run tests with coverage
+    # Run tests with coverage
     run_command(
         "poetry run pytest tests/ --cov=src/audhd_lifecoach --cov-report=term --cov-report=html --cov-report=xml",
-        "Running tests with coverage"
+        "Running tests with coverage",
     )
-    
+
     # Generate coverage badge
     run_command(
-        "poetry run coverage-badge -f -o coverage.svg",
-        "Generating coverage badge"
+        "poetry run coverage-badge -f -o coverage.svg", "Generating coverage badge"
     )
-    
+
     print("\n✅ Coverage analysis complete!")
     print("📄 Coverage report: htmlcov/index.html")
     print("🏷️  Coverage badge: coverage.svg")
     print("📊 XML report: coverage.xml")
+
 
 if __name__ == "__main__":
     main()

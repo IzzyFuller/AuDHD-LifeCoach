@@ -22,11 +22,13 @@ logger = logging.getLogger(__name__)
 
 class SpaCyCommitmentIdentifier:
     """
-    AI-powered implementation of the CommitmentIdentifiable protocol that extracts commitments from communications.
+    AI-powered implementation of the CommitmentIdentifiable protocol that extracts
+    commitments from communications.
 
-    This class uses spaCy's natural language processing capabilities to analyze the content
-    of Communication objects to identify if the sender has made any commitments to the recipient,
-    and extracts the relevant details to create properly formatted Commitment objects.
+    This class uses spaCy's natural language processing capabilities to analyze
+    the content of Communication objects to identify if the sender has made any
+    commitments to the recipient, and extracts the relevant details to create
+    properly formatted Commitment objects.
     """
 
     def __init__(self):
@@ -279,9 +281,11 @@ class SpaCyCommitmentIdentifier:
         # Look for location entities
         for entity in doc.ents:
             if entity.label_ in ["LOC", "GPE", "FAC"]:
-                return entity.text
-
-        # Look for location phrases after prepositions like "at" or "in"
+                return entity.text        # Look for location phrases after prepositions like "at" or "in"
+        # First check if doc.text is available and is a string
+        if not hasattr(doc, 'text') or not isinstance(doc.text, str):
+            return None
+            
         location_patterns = [
             r"at\s+([^.,;]+)",
             r"in\s+([^.,;]+)",
