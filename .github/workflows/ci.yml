@@ -57,6 +57,19 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
+    - name: Cache SpaCy models
+      id: cached-spacy-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/spacy
+        key: spacy-models-${{ runner.os }}-en_core_web_trf-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          spacy-models-${{ runner.os }}-en_core_web_trf-
+
+    - name: Download SpaCy model
+      if: steps.cached-spacy-models.outputs.cache-hit != 'true'
+      run: poetry run python -m spacy download en_core_web_trf
+
     - name: Set up environment variables
       run: |
         echo "RABBITMQ_HOST=localhost" >> $GITHUB_ENV
