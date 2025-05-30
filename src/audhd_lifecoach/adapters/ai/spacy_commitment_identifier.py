@@ -281,11 +281,13 @@ class SpaCyCommitmentIdentifier:
         # Look for location entities
         for entity in doc.ents:
             if entity.label_ in ["LOC", "GPE", "FAC"]:
-                return entity.text        # Look for location phrases after prepositions like "at" or "in"
+                return (
+                    entity.text
+                )  # Look for location phrases after prepositions like "at" or "in"
         # First check if doc.text is available and is a string
-        if not hasattr(doc, 'text') or not isinstance(doc.text, str):
+        if not hasattr(doc, "text") or not isinstance(doc.text, str):
             return None
-            
+
         location_patterns = [
             r"at\s+([^.,;]+)",
             r"in\s+([^.,;]+)",

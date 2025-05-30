@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
+
 import pytest
 
+from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import (
+    SpaCyCommitmentIdentifier,
+)
 from audhd_lifecoach.core.domain.entities.communication import Communication
 from audhd_lifecoach.core.interfaces.commitment_identifiable import (
     CommitmentIdentifiable,
-)
-from audhd_lifecoach.adapters.ai.spacy_commitment_identifier import (
-    SpaCyCommitmentIdentifier,
 )
 
 
@@ -109,9 +110,7 @@ class TestSpaCyCommitmentIdentifier:
     def test_extract_duration(self, identifier):
         """Test duration extraction from text."""
         # Test various duration patterns
-        assert identifier._extract_duration("for 30 minutes") == timedelta(
-            minutes=30
-        )
+        assert identifier._extract_duration("for 30 minutes") == timedelta(minutes=30)
         assert identifier._extract_duration("2 hours long") == timedelta(hours=2)
         assert identifier._extract_duration("for 1 day") == timedelta(days=1)
         assert identifier._extract_duration("just a quick meeting") is None
