@@ -29,6 +29,7 @@ sqlalchemy = "^2.0.27"
 pytest = "^7.4.0"
 httpx = "^0.27.0"
 # NLP dependencies - no longer optional
+spacy = ">=3.7.0"
 transformers = "^4.35.0"
 onnxruntime = "^1.16.0"
 optimum = "^1.15.0"
