@@ -1,0 +1,119 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-3.12-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+
+    - name: Install project
+      run: poetry install --no-interaction
+
+    - name: Cache SpaCy models
+      id: cached-spacy-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/spacy
+        key: spacy-models-${{ runner.os }}-en_core_web_trf-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          spacy-models-${{ runner.os }}-en_core_web_trf-
+
+    - name: Download SpaCy model
+      if: steps.cached-spacy-models.outputs.cache-hit != 'true'
+      run: poetry run python -m spacy download en_core_web_trf
+
+    - name: Set up environment variables
+      run: |
+        echo "RABBITMQ_HOST=localhost" >> $GITHUB_ENV
+        echo "RABBITMQ_PORT=5672" >> $GITHUB_ENV
+        echo "RABBITMQ_USERNAME=guest" >> $GITHUB_ENV
+        echo "RABBITMQ_PASSWORD=guest" >> $GITHUB_ENV
+        echo "RABBITMQ_CONSUME_QUEUE=communications" >> $GITHUB_ENV
+        echo "RABBITMQ_PUBLISH_EXCHANGE=audhd_lifecoach" >> $GITHUB_ENV
+
+    - name: Run linting
+      run: |
+        poetry run black --check src/ tests/
+        poetry run isort --check-only src/ tests/
+
+    - name: Run type checking
+      run: poetry run mypy src/
+
+    - name: Run tests with coverage
+      run: |
+        poetry run pytest tests/ --cov=src/audhd_lifecoach --cov-report=xml --cov-report=term
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        docker build -t audhd-lifecoach:latest -f Dockerfile.simple .
+
+    - name: Test Docker image
+      run: |
+        docker run --rm audhd-lifecoach:latest --help || true

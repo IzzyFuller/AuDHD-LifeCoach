@@ -3,16 +3,16 @@ RabbitMQ Message Publisher.
 
 This adapter implements the message publisher interface for RabbitMQ.
 """
+
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pika
 from pika.exceptions import AMQPError
 
 # The publisher interface is defined as a Protocol - no need to inherit
-from audhd_lifecoach.application.interfaces.message_publisher_interface import MessagePublisherInterface
-
+from audhd_lifecoach.adapters.messaging.rabbitmq_settings import RabbitMQSettings
 
 logger = logging.getLogger(__name__)
 
@@ -20,83 +20,65 @@ logger = logging.getLogger(__name__)
 class RabbitMQMessagePublisher:
     """
     RabbitMQ implementation of the message publisher interface.
-    
+
     This implementation assumes all infrastructure (exchanges, queues, bindings)
     has been pre-provisioned externally (e.g., by Terraform).
     """
-    
-    def __init__(
-        self,
-        host: str = "localhost",
-        port: int = 5672,
-        username: str = "guest",
-        password: str = "guest",
-        virtual_host: str = "/",
-        connection_attempts: int = 3,
-        retry_delay: int = 5
-    ):
+
+    def __init__(self, settings: RabbitMQSettings):
         """
-        Initialize the RabbitMQ message publisher.
-        
+        Initialize the RabbitMQ message publisher with settings.
+
         Args:
-            host: RabbitMQ host
-            port: RabbitMQ port
-            username: RabbitMQ username
-            password: RabbitMQ password
-            virtual_host: RabbitMQ virtual host
-            connection_attempts: Number of connection attempts
-            retry_delay: Delay between connection attempts in seconds
+            settings: RabbitMQ configuration settings
         """
-        self._host = host
-        self._port = port
-        self._username = username
-        self._password = password
-        self._virtual_host = virtual_host
-        self._connection_attempts = connection_attempts
-        self._retry_delay = retry_delay
-        
+        self.settings = settings
+
         # Connection state
         self._connection = None
         self._channel = None
-        
+
     def connect(self) -> bool:
         """
         Connect to RabbitMQ.
-        
+
         Returns:
             bool: True if connection successful, False otherwise
         """
         try:
             # Create connection parameters with credentials
             credentials = pika.PlainCredentials(
-                username=self._username, 
-                password=self._password
+                username=self.settings.username, password=self.settings.password
             )
-            
+
             parameters = pika.ConnectionParameters(
-                host=self._host,
-                port=self._port,
-                virtual_host=self._virtual_host,
+                host=self.settings.host,
+                port=self.settings.port,
+                virtual_host=self.settings.virtual_host,
                 credentials=credentials,
-                connection_attempts=self._connection_attempts,
-                retry_delay=self._retry_delay
+                connection_attempts=self.settings.connection_attempts,
+                retry_delay=self.settings.retry_delay,
+                socket_timeout=self.settings.connection_timeout,
+                heartbeat=self.settings.heartbeat,
             )
-            
+
             # Connect to RabbitMQ
             self._connection = pika.BlockingConnection(parameters)
             self._channel = self._connection.channel()
-            
-            logger.info(f"Connected to RabbitMQ at {self._host}:{self._port}")
+
+            logger.info(
+                f"Connected to RabbitMQ at {self.settings.host}:{self.settings.port}"
+            )
             return True
-            
+
         except AMQPError as e:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
             return False
-    
+
     def disconnect(self) -> bool:
         """
         Disconnect from RabbitMQ.
-        
+
         Returns:
             bool: True if disconnection successful, False otherwise
         """
@@ -105,66 +87,71 @@ class RabbitMQMessagePublisher:
                 # Close channel first if it exists
                 if self._channel and self._channel.is_open:
                     self._channel.close()
-                
+
                 # Close connection
                 self._connection.close()
-                
+
                 # Reset connection state
                 self._connection = None
                 self._channel = None
-                
+
                 logger.info("Disconnected from RabbitMQ")
                 return True
             return True  # Already disconnected
-            
+
         except AMQPError as e:
             logger.error(f"Error disconnecting from RabbitMQ: {e}")
             return False
-    
+
     def publish_message(
         self,
-        exchange: str,
         routing_key: str,
         message: Dict[str, Any],
         content_type: str = "application/json",
-        persistent: bool = True
+        persistent: bool = True,
     ) -> bool:
         """
-        Publish a message to RabbitMQ.
-        
+        Publish a message to the configured exchange.
+
         Assumes the exchange has been pre-provisioned externally.
-        
+
         Args:
-            exchange: The exchange to publish to
             routing_key: The routing key for the message
             message: The message to publish (will be serialized to JSON)
             content_type: The content type of the message
             persistent: Whether the message should be persisted by the broker
-            
+
         Returns:
             bool: True if the message was published successfully, False otherwise
         """
+        if not self._channel:
+            return False
+
         try:
             # Convert message to JSON
-            message_body = json.dumps(message).encode('utf-8')
-            
+            message_body = json.dumps(message).encode("utf-8")
+
             # Create message properties
             properties = pika.BasicProperties(
                 content_type=content_type,
-                delivery_mode=2 if persistent else 1  # 2 = persistent, 1 = non-persistent
+                delivery_mode=(
+                    2 if persistent else 1
+                ),  # 2 = persistent, 1 = non-persistent
             )
-            
-            # Publish message
+
+            # Publish message to the configured exchange
             self._channel.basic_publish(
-                exchange=exchange,
+                exchange=self.settings.publish_exchange_name,  # Use configured exchange
                 routing_key=routing_key,
                 body=message_body,
-                properties=properties
+                properties=properties,
             )
-            
-            logger.debug(f"Published message to exchange '{exchange}' with routing key '{routing_key}'")
+
+            logger.debug(
+                f"Published message to exchange '{self.settings.publish_exchange_name}' with routing key '{routing_key}'"
+            )
             return True
-            
+
         except AMQPError as e:
             logger.error(f"Failed to publish message: {e}")
             return False

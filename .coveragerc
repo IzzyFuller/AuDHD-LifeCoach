@@ -1,0 +1,7 @@
+[run]
+omit =
+    */interfaces/*
+    src/audhd_lifecoach/core/interfaces/*
+    */*entrypoint*.py
+    */__init__.py
+    */tests/*

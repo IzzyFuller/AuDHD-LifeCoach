@@ -1,0 +1,83 @@
+version: '3.8'
+
+# This Docker Compose file is for LOCAL DEVELOPMENT ONLY
+# It includes a RabbitMQ service for convenience during development
+# Production deployments should use external RabbitMQ infrastructure
+
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    image: audhd-lifecoach:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+
+      # Use the local RabbitMQ service
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VIRTUAL_HOST=/
+
+      # Development queue/exchange names
+      - RABBITMQ_CONSUME_QUEUE=communications
+      - RABBITMQ_PUBLISH_EXCHANGE=audhd_lifecoach
+    volumes:
+      # Store Hugging Face models on the D: drive (Windows-specific)
+      # For Linux/Mac, change to: - ./huggingface_cache:/huggingface
+      - D:/HuggingFaceModels:/huggingface
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  message-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    image: audhd-lifecoach:latest
+    command: [ "python", "message_consumer_entrypoint.py" ]
+    environment:
+      - ENVIRONMENT=development
+
+      # Use the local RabbitMQ service
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VIRTUAL_HOST=/
+
+      # Development queue/exchange names
+      - RABBITMQ_CONSUME_QUEUE=communications
+      - RABBITMQ_PUBLISH_EXCHANGE=audhd_lifecoach
+    volumes:
+      # Store Hugging Face models on the D: drive (Windows-specific)
+      # For Linux/Mac, change to: - ./huggingface_cache:/huggingface
+      - D:/HuggingFaceModels:/huggingface
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # Management interface
+    volumes:
+      - rabbitmq_dev_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  rabbitmq_dev_data:

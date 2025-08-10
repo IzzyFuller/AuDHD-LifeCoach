@@ -20,5 +20,6 @@
         "PYTHONPATH": "${workspaceFolder}/src"
     },
     "python.testing.cwd": "${workspaceFolder}",
-    "python.poetryPath": "C:\\Users\\Izzy\\AppData\\Roaming\\pypoetry\\venv\\Scripts\\poetry.exe"
+    "python.poetryPath": "C:\\Users\\Izzy\\AppData\\Roaming\\pypoetry\\venv\\Scripts\\poetry.exe",
+    "testing.coverageToolbarEnabled": true
 }

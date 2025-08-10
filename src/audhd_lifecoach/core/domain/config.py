@@ -1,6 +1,7 @@
 """
 Configuration values for the core domain.
 """
+
 from datetime import timedelta
 
 # Default time values for commitments

@@ -14,9 +14,9 @@
 ## Development Standards
 
 ### Test-Driven Development (TDD)
-1. **Write a failing test first** that describes the desired behavior
+1. **Write a failing test first** that describes the desired behavior. A perfect test knows nothing about the code it's testing except the signature of the called method of function. Internal details of the code should only be known by the test when it is absolutely required to make the test happen. If the code under test has external dependencies, such as external services, web based LLMs, or any other resource that would not be available on an unconnected device, that external dependency should be mocked as close to the boundary as possible.
 2. **Write minimal implementation code** to make the test pass
-3. **Refactor** code while maintaining test coverage
+3. **Refactor** code while maintaining test coverage: evaluate the code base after all tests begin passing for any opportunity to improve quality, readability, extensibility, security, etc. without overcomplexifying anything. During refactor no changes will be made to tests. if a test breaks because of a refactor that does not change the external behavior of the code under test, that test needs to be re-evaluated to make sure it does not know too much about the code it is testing.
 4. Always run the tests before committing code changes to ensure everything still passes
 
 ### Clean Architecture Principles
